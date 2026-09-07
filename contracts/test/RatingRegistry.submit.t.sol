@@ -133,7 +133,7 @@ contract RatingRegistrySubmitTest is Base {
         emit log_named_uint("submitRating gas", used);
         // This is a gasleft() delta measured from the test contract, so it includes
         // ~5k of vm.prank bookkeeping and CALL frame overhead that submitRating()
-        // never pays. `forge test --gas-report` puts submitRating at 145,175 max,
+        // never pays. `forge test --gas-report` puts submitRating at 145,190 max,
         // which is the figure docs/CONTRACTS.md's "under 120k" rough target refers
         // to — that target is NOT met. See docs/DECISIONS.md for why it's accepted
         // rather than optimized away. This bound guards against a real regression

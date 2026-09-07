@@ -149,8 +149,11 @@ Plus these scenarios:
 
 - 100 Sybil accounts all rating one worker, without platform attestations, and all
   of them failing
-- a worker abandoning a 2-star history for a new address, asserting the new score
+- a worker above the 3.0 prior abandoning their history, asserting the new score
   falls below the old one
+- a worker below the prior abandoning a 2-star history, asserting the new score
+  rises — the known residual risk in `docs/SECURITY.md`, pinned so it cannot be
+  silently forgotten
 - the same attestation submitted twice, second call reverting
 - an attestation signed by a deactivated platform, reverting
 - an attestation signed for a different chain id, reverting

@@ -89,9 +89,30 @@ pnpm dev
 
 ## Gas
 
-Fill in from `forge test --gas-report` once M1 lands.
+From `contracts/gas-report.txt` (`forge test --gas-report`).
 
-| Function | Gas |
-|---|---|
-| `register` | |
-| `submitRating` | |
+| Function | Min | Avg | Median | Max |
+|---|---|---|---|---|
+| `register` | 23,461 | 44,949 | 45,021 | 45,021 |
+| `submitRating` | 24,588 | ~68,500 | 27,016 | 145,190 |
+| `scoreOf` | 6,591 | 6,591 | 6,591 | 6,591 |
+
+`submitRating`'s avg and median are not the real cost. Of the 1,067 recorded
+calls, most are *reverting* calls from the revert suite and the 100-attacker
+Sybil loop, which fail cheaply and drag the average down to around 68,500 (it
+also shifts slightly between runs, since one fuzz test's random content hash
+occasionally lands on zero, which is cheaper to store than a real hash). The
+number that matters is the **max, 145,190** — the one call that actually
+writes a rating, and it is stable run to run because every field it stores is
+non-zero. `register` meets the `docs/CONTRACTS.md` target of under 50k.
+`submitRating` does not: at 145,190 it misses the under-120k target by about
+21%. The write is structurally four cold storage slots — three for the
+`Rating` struct plus one for the per-platform nonce — which is 80,000 gas of
+irreducible floor before any logic runs, on top of a cross-contract stats
+update, three cross-contract reads, and ECDSA recovery. See
+`docs/DECISIONS.md` for the full reasoning on why this was accepted rather
+than optimized away.
+
+`scoreOf`'s `docs/CONTRACTS.md` label of "view, free" is correct for an
+off-chain `eth_call`, where a view function costs nothing. The 6,591 figure
+above is what it costs when another contract calls it on chain instead.

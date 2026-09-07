@@ -76,7 +76,7 @@ touch them.
 | Access control gaps | `Ownable` for the registry, constructor-set caller for stats updates, tested |
 | Integer truncation | Scale to basis points before dividing, pinned tests |
 | Unbounded loops | No arrays that grow with rating count, aggregates only |
-| Reentrancy | No external calls, no value transfers, so no surface |
+| Reentrancy | `submitRating` calls `WORKERS` and `PLATFORMS`, but both are immutable, in-repo contracts that make no outbound calls of their own, and all state is written before either call runs |
 | Front-running | Nothing to gain by ordering a rating, no economic value at stake |
 | Denial of service via gas | Fixed-cost writes regardless of history size |
 

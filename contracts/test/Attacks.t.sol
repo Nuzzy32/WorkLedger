@@ -239,19 +239,70 @@ contract AttacksTest is Base {
         assertGt(after_, 44_000, "30 five-star jobs absorb one 1-star without collapsing");
     }
 
-    /// @notice The owner cannot rewrite anyone's score, because the prior
-    ///         constants are immutable.
-    function test_ownerCannotChangeTheScoringConstants() public {
-        bytes4[2] memory setters =
-            [bytes4(keccak256("setPriorScoreBps(uint256)")), bytes4(keccak256("setPriorWeight(uint32)"))];
+    /// @notice Pins the runtime half of docs/SECURITY.md's "Score inflation
+    ///         through the owner key" mitigation: driving every reachable
+    ///         state-changing entry point in the system once does not move
+    ///         `PRIOR_SCORE_BPS` or `PRIOR_WEIGHT`, and the scoring formula
+    ///         still runs on exactly those two values afterward.
+    /// @dev `immutable` is a compile-time guarantee, not a runtime property —
+    ///      the compiler refuses to emit any code path that writes these slots
+    ///      after construction, so no call this test could make would ever
+    ///      observe a violation even if one existed. What this test can and
+    ///      does establish is narrower: that no *reachable* function anywhere
+    ///      in PlatformRegistry, WorkerRegistry, or RatingRegistry mutates the
+    ///      priors, by calling one of each kind (platform onboarding, platform
+    ///      deactivation, worker registration, a full rating submission) and
+    ///      then reading the priors and the formula's inputs back unchanged.
+    ///      That is the evidence a reader of docs/SECURITY.md would actually
+    ///      want behind "Constants are immutable, set in the constructor. The
+    ///      owner cannot touch them."
+    function test_scoringConstantsSurviveEveryReachableStateChange() public {
+        // Owner registers an additional platform.
+        uint256 secondPlatformKey = 0xF00DBABE;
+        address secondPlatformSigner = vm.addr(secondPlatformKey);
+        vm.prank(owner);
+        uint32 secondPlatformId =
+            platforms.registerPlatform(secondPlatformSigner, keccak256("SecondPlatform"));
 
-        for (uint256 i = 0; i < setters.length; i++) {
+        // Owner deactivates a platform (the freshly added one, so the original
+        // platform stays active for the rating submitted below).
+        vm.prank(owner);
+        platforms.deactivatePlatform(secondPlatformId);
+
+        // A new worker registers.
+        address newWorker = address(0x7777);
+        registerWorker(newWorker);
+
+        // A rating is submitted end to end: writes rating storage and bumps
+        // worker stats, the two state changes closest to the scoring formula.
+        RatingRegistry.Attestation memory att = attestation(keccak256("job-priors"), worker, client, 1);
+        bytes memory sig = sign(att, platformKey);
+        vm.prank(client);
+        ratings.submitRating(att, sig, 5, bytes32(0));
+
+        // These two selectors are the only plausible names a prior-rewriting
+        // setter would carry. A `false` result only shows that no function
+        // exists under exactly these two names and signatures on this
+        // contract with no fallback — it says nothing about a setter under a
+        // different name (e.g. `updatePriors(uint256,uint32)`), and unlike the
+        // checks above it cannot exercise `immutable` at all.
+        bytes4[2] memory guessedSetterSelectors =
+            [bytes4(keccak256("setPriorScoreBps(uint256)")), bytes4(keccak256("setPriorWeight(uint32)"))];
+        for (uint256 i = 0; i < guessedSetterSelectors.length; i++) {
             vm.prank(owner);
-            (bool ok,) = address(ratings).call(abi.encodeWithSelector(setters[i], uint256(50_000)));
-            assertFalse(ok, "no setter for a prior constant may exist");
+            (bool ok,) =
+                address(ratings).call(abi.encodeWithSelector(guessedSetterSelectors[i], uint256(50_000)));
+            assertFalse(ok, "no setter exists under this guessed selector, for what that is worth");
         }
 
-        assertEq(ratings.PRIOR_SCORE_BPS(), 30_000);
-        assertEq(ratings.PRIOR_WEIGHT(), 5);
+        assertEq(ratings.PRIOR_SCORE_BPS(), 30_000, "prior score bps unchanged after every reachable write");
+        assertEq(ratings.PRIOR_WEIGHT(), 5, "prior weight unchanged after every reachable write");
+
+        (, uint32 ratingCount, uint32 scoreSum) = workers.statsOf(worker);
+        assertEq(
+            ratings.scoreOf(worker),
+            ratings.previewScoreBps(ratingCount, scoreSum),
+            "scoreOf still runs the formula on the constructor's own constants"
+        );
     }
 }

@@ -242,8 +242,7 @@ contract AttacksTest is Base {
     /// @notice Pins the runtime half of docs/SECURITY.md's "Score inflation
     ///         through the owner key" mitigation: driving every reachable
     ///         state-changing entry point in the system once does not move
-    ///         `PRIOR_SCORE_BPS` or `PRIOR_WEIGHT`, and the scoring formula
-    ///         still runs on exactly those two values afterward.
+    ///         `PRIOR_SCORE_BPS` or `PRIOR_WEIGHT`.
     /// @dev `immutable` is a compile-time guarantee, not a runtime property —
     ///      the compiler refuses to emit any code path that writes these slots
     ///      after construction, so no call this test could make would ever
@@ -252,7 +251,13 @@ contract AttacksTest is Base {
     ///      in PlatformRegistry, WorkerRegistry, or RatingRegistry mutates the
     ///      priors, by calling one of each kind (platform onboarding, platform
     ///      deactivation, worker registration, a full rating submission) and
-    ///      then reading the priors and the formula's inputs back unchanged.
+    ///      then reading the priors back unchanged. The real signal is the two
+    ///      `assertEq` calls on `PRIOR_SCORE_BPS` and `PRIOR_WEIGHT` below. The
+    ///      closing `scoreOf`/`previewScoreBps` equality does not add evidence
+    ///      about the priors — `scoreOf` is defined as `previewScoreBps` of the
+    ///      current stats, so both sides always read the same immutables and
+    ///      the equality would hold even if a prior had been mutated. It checks
+    ///      only that `scoreOf` is still wired to `previewScoreBps`.
     ///      That is the evidence a reader of docs/SECURITY.md would actually
     ///      want behind "Constants are immutable, set in the constructor. The
     ///      owner cannot touch them."
@@ -302,7 +307,7 @@ contract AttacksTest is Base {
         assertEq(
             ratings.scoreOf(worker),
             ratings.previewScoreBps(ratingCount, scoreSum),
-            "scoreOf still runs the formula on the constructor's own constants"
+            "scoreOf is still wired to previewScoreBps (this does not check the priors; see above)"
         );
     }
 }

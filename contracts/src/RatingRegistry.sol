@@ -11,8 +11,11 @@ import {WorkerRegistry} from "./WorkerRegistry.sol";
 ///         computes each worker's score on chain.
 /// @dev A rating counts only with a valid EIP-712 attestation from an active
 ///      platform. Without that rule anyone can rate anyone and the whole thing
-///      is theater. Holds no funds and makes no external value transfers, so
-///      there is no reentrancy surface.
+///      is theater. `submitRating` makes external calls to `WORKERS` and
+///      `PLATFORMS`, but both are immutable, in-repo contracts that make no
+///      outbound calls of their own, and all state here is written before
+///      either call runs — so there is no reentrancy surface, not because the
+///      calls don't exist, but because nothing on the other end can call back.
 contract RatingRegistry is EIP712 {
     /// @notice A platform's statement that a job actually happened.
     /// @param jobId Platform-scoped job identifier, also this contract's storage key.
@@ -133,13 +136,17 @@ contract RatingRegistry is EIP712 {
             platformId: platformId,
             score: score,
             client: att.client,
+            // casting to 'uint64' is safe because a unix timestamp does not
+            // exceed type(uint64).max until the year 2554, and uint64 is the
+            // field width docs/DATA-MODEL.md declares for submittedAt.
+            // forge-lint: disable-next-line(unsafe-typecast)
             submittedAt: uint64(block.timestamp),
             contentHash: contentHash
         });
 
-        WORKERS.recordRating(att.worker, score);
-
         emit RatingSubmitted(att.jobId, att.worker, att.client, platformId, score);
+
+        WORKERS.recordRating(att.worker, score);
     }
 
     /// @notice Read a stored rating.
@@ -170,7 +177,9 @@ contract RatingRegistry is EIP712 {
     /// @param worker Worker to score.
     /// @return scoreBps Score in basis points.
     function scoreOf(address worker) external view returns (uint256 scoreBps) {
-        (, uint32 ratingCount, uint32 scoreSum) = WORKERS.statsOf(worker);
+        // `registeredAt` is unused; the formula only needs the two aggregates.
+        (uint64 registeredAt, uint32 ratingCount, uint32 scoreSum) = WORKERS.statsOf(worker);
+        registeredAt;
         return previewScoreBps(ratingCount, scoreSum);
     }
 

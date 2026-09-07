@@ -63,6 +63,10 @@ contract WorkerRegistry {
         if (worker.exists) revert AlreadyRegistered();
 
         worker.exists = true;
+        // casting to 'uint64' is safe because a unix timestamp does not exceed
+        // type(uint64).max until the year 2554, and uint64 is the field width
+        // docs/DATA-MODEL.md declares for registeredAt.
+        // forge-lint: disable-next-line(unsafe-typecast)
         worker.registeredAt = uint64(block.timestamp);
 
         emit WorkerRegistered(msg.sender, worker.registeredAt);

@@ -51,7 +51,14 @@ contract PlatformRegistry is Ownable {
 
         platformId = ++platformCount;
         _platforms[platformId] = Platform({
-            signer: signer, registeredAt: uint64(block.timestamp), active: true, nameHash: nameHash
+            signer: signer,
+            // casting to 'uint64' is safe because a unix timestamp does not
+            // exceed type(uint64).max until the year 2554, and uint64 is the
+            // field width docs/DATA-MODEL.md declares for registeredAt.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            registeredAt: uint64(block.timestamp),
+            active: true,
+            nameHash: nameHash
         });
         _platformIdOf[signer] = platformId;
 

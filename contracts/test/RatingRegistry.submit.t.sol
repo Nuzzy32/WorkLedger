@@ -121,7 +121,7 @@ contract RatingRegistrySubmitTest is Base {
         assertEq(sum, score);
     }
 
-    function test_gas_submitRatingUnderBudget() public {
+    function test_gas_submitRatingRegressionGuard() public {
         RatingRegistry.Attestation memory att = attestation(JOB, worker, client, 1);
         bytes memory sig = sign(att, platformKey);
 

@@ -99,6 +99,11 @@ contract RatingRegistry is EIP712 {
     }
 
     /// @notice Submit a rating for an attested job.
+    /// @dev Checks run cheapest-first so an invalid request never pays for
+    ///      signature recovery. The nonce check follows recovery because the
+    ///      platform's nonce namespace is unknown until the signer is known;
+    ///      duplicate submission is separately impossible because `jobId` is the
+    ///      storage key. See docs/DECISIONS.md.
     /// @param att The platform's attestation.
     /// @param platformSignature EIP-712 signature over `att` by an active platform signer.
     /// @param score Score from 1 to 5.
@@ -109,7 +114,32 @@ contract RatingRegistry is EIP712 {
         uint8 score,
         bytes32 contentHash
     ) external {
-        // Task 5 fills this in.
+        if (score < 1 || score > 5) revert InvalidScore();
+        if (_ratings[att.jobId].worker != address(0)) revert JobAlreadyRated();
+        if (msg.sender != att.client) revert NotTheClient();
+        if (att.worker == att.client) revert SelfRatingForbidden();
+        if (!WORKERS.isRegistered(att.worker)) revert WorkerNotRegistered();
+        if (att.completedAt > block.timestamp) revert FutureCompletion();
+
+        address signer = ECDSA.recover(_digest(att), platformSignature);
+        if (!PLATFORMS.isActiveSigner(signer)) revert UnknownPlatform();
+
+        uint32 platformId = PLATFORMS.platformIdOf(signer);
+        if (_nonceUsed[platformId][att.nonce]) revert NonceUsed();
+        _nonceUsed[platformId][att.nonce] = true;
+
+        _ratings[att.jobId] = Rating({
+            worker: att.worker,
+            platformId: platformId,
+            score: score,
+            client: att.client,
+            submittedAt: uint64(block.timestamp),
+            contentHash: contentHash
+        });
+
+        WORKERS.recordRating(att.worker, score);
+
+        emit RatingSubmitted(att.jobId, att.worker, att.client, platformId, score);
     }
 
     /// @notice Read a stored rating.

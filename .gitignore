@@ -1,0 +1,28 @@
+# AI tooling
+.claude/
+CLAUDE.md
+.cursor/
+.cursorrules
+.aider*
+
+# secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# node
+node_modules/
+.next/
+out/
+.vercel/
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+!contracts/broadcast/**/run-latest.json
+
+# os
+.DS_Store

@@ -74,9 +74,9 @@ contract WorkerRegistryTest is Test {
         registry.recordRating(worker, 5);
     }
 
-    function test_revert_recordRatingForUnregisteredWorker() public {
+    function test_revert_recordRatingForUnknownWorker() public {
         vm.prank(ratingRegistry);
-        vm.expectRevert(WorkerRegistry.WorkerNotRegistered.selector);
+        vm.expectRevert(WorkerRegistry.UnknownWorker.selector);
         registry.recordRating(worker, 5);
     }
 

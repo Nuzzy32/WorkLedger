@@ -56,9 +56,21 @@ contract RatingRegistryRevertsTest is Base {
     }
 
     function test_revert_workerNotRegistered() public {
+        // Signed with roguePlatformKey, not platformKey, on purpose. WorkerRegistry
+        // declares its own WorkerNotRegistered() error, and custom-error selectors
+        // are bytes4(keccak256(signature)) with no contract scoping, so the two
+        // errors collide at the selector level. Signing with the allowlisted
+        // platformKey would let this assertion pass even if RatingRegistry's own
+        // check 5 (the one under test) were deleted, because execution would then
+        // fall through to WorkerRegistry.recordRating's identical-selector revert.
+        // Signing with a non-allowlisted key instead means: if check 5 fires,
+        // we get WorkerNotRegistered as expected; if check 5 were removed,
+        // recovery would yield an unknown signer and we'd get UnknownPlatform
+        // instead, failing the assertion below. That makes this test actually
+        // prove check 5 exists. Do not "fix" this back to platformKey.
         address unregistered = address(0x9999);
         RatingRegistry.Attestation memory att = attestation(JOB, unregistered, client, 1);
-        bytes memory sig = sign(att, platformKey);
+        bytes memory sig = sign(att, roguePlatformKey);
 
         vm.prank(client);
         vm.expectRevert(RatingRegistry.WorkerNotRegistered.selector);

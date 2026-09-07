@@ -26,7 +26,7 @@ contract WorkerRegistry {
     error NotInitializer();
     error AlreadyInitialized();
     error ZeroAddress();
-    error WorkerNotRegistered();
+    error UnknownWorker();
 
     event WorkerRegistered(address indexed worker, uint64 registeredAt);
     event RatingRegistrySet(address indexed registry);
@@ -99,7 +99,7 @@ contract WorkerRegistry {
         if (msg.sender != ratingRegistry) revert NotRatingRegistry();
 
         Worker storage record = _workers[worker];
-        if (!record.exists) revert WorkerNotRegistered();
+        if (!record.exists) revert UnknownWorker();
 
         record.ratingCount += 1;
         record.scoreSum += score;

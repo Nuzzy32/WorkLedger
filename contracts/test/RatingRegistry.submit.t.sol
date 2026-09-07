@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {Base} from "./helpers/Base.t.sol";
 import {RatingRegistry} from "../src/RatingRegistry.sol";
+import {WorkerRegistry} from "../src/WorkerRegistry.sol";
 
 contract RatingRegistrySubmitTest is Base {
     bytes32 internal constant JOB = keccak256("job-1");
@@ -119,6 +120,33 @@ contract RatingRegistrySubmitTest is Base {
         (, uint32 count, uint32 sum) = workers.statsOf(worker);
         assertEq(count, 1);
         assertEq(sum, score);
+    }
+
+    /// @dev Nothing certifies today that a rating cannot survive a failed stats
+    ///      update — the property holds by plain EVM revert semantics, but it's
+    ///      worth pinning. `rogue` shares `workers`/`platforms` with `ratings`
+    ///      but is never wired as `workers.ratingRegistry`, so its otherwise-valid
+    ///      `submitRating` call fails at the final `WORKERS.recordRating` step.
+    ///      That must unwind the earlier `_ratings[jobId]` write in the same
+    ///      transaction, not just leave worker stats untouched.
+    function test_submit_ratingWriteIsAtomicWithFailedStatsUpdate() public {
+        RatingRegistry rogue = new RatingRegistry(workers, platforms, 30_000, 5);
+
+        RatingRegistry.Attestation memory att = attestation(JOB, worker, client, 1);
+        // Signed over `rogue`'s own EIP-712 digest, hoisted into a local before
+        // the prank below: `attestationDigest` is a real external call, and
+        // calling it after vm.prank(client) would spend that one-shot prank on
+        // this call instead of on rogue.submitRating.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(platformKey, rogue.attestationDigest(att));
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        vm.prank(client);
+        vm.expectRevert(WorkerRegistry.NotRatingRegistry.selector);
+        rogue.submitRating(att, sig, 5, bytes32(0));
+
+        assertEq(
+            rogue.ratingOf(JOB).worker, address(0), "rating write must not survive the failed stats update"
+        );
     }
 
     function test_gas_submitRatingRegressionGuard() public {

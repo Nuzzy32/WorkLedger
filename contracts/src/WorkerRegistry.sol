@@ -25,7 +25,7 @@ contract WorkerRegistry {
     error NotRatingRegistry();
     error NotInitializer();
     error AlreadyInitialized();
-    error ZeroAddress();
+    error ZeroRegistry();
     error UnknownWorker();
 
     event WorkerRegistered(address indexed worker, uint64 registeredAt);
@@ -38,6 +38,11 @@ contract WorkerRegistry {
 
     mapping(address => Worker) private _workers;
 
+    /// @dev Captures the deployer as `INITIALIZER`, the only address that will
+    ///      ever be able to call `setRatingRegistry`. This line is easy to miss
+    ///      reading top to bottom, but it silently decides who may wire this
+    ///      registry to a `RatingRegistry` — get the deployer wrong and no other
+    ///      address can complete the setup.
     constructor() {
         INITIALIZER = msg.sender;
     }
@@ -51,7 +56,7 @@ contract WorkerRegistry {
     function setRatingRegistry(address registry) external {
         if (msg.sender != INITIALIZER) revert NotInitializer();
         if (ratingRegistry != address(0)) revert AlreadyInitialized();
-        if (registry == address(0)) revert ZeroAddress();
+        if (registry == address(0)) revert ZeroRegistry();
 
         ratingRegistry = registry;
         emit RatingRegistrySet(registry);

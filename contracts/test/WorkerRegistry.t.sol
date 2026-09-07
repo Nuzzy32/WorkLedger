@@ -96,7 +96,7 @@ contract WorkerRegistryTest is Test {
     function test_revert_setRatingRegistryToZero() public {
         WorkerRegistry fresh = new WorkerRegistry();
 
-        vm.expectRevert(WorkerRegistry.ZeroAddress.selector);
+        vm.expectRevert(WorkerRegistry.ZeroRegistry.selector);
         fresh.setRatingRegistry(address(0));
     }
 

@@ -102,8 +102,9 @@ contract RatingRegistry is EIP712 {
     }
 
     /// @notice Submit a rating for an attested job.
-    /// @dev Checks run cheapest-first so an invalid request never pays for
-    ///      signature recovery. The nonce check follows recovery because the
+    /// @dev Checks run in the order docs/CONTRACTS.md mandates; signature
+    ///      recovery is last, so an invalid request never pays for it. The
+    ///      nonce check follows recovery because the
     ///      platform's nonce namespace is unknown until the signer is known;
     ///      duplicate submission is separately impossible because `jobId` is the
     ///      storage key. See docs/DECISIONS.md.

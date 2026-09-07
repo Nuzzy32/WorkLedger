@@ -21,7 +21,7 @@ contract PlatformRegistry is Ownable {
         bytes32 nameHash;
     }
 
-    error ZeroAddress();
+    error ZeroSigner();
     error SignerAlreadyRegistered();
     error UnknownPlatformId();
 
@@ -46,7 +46,7 @@ contract PlatformRegistry is Ownable {
         onlyOwner
         returns (uint32 platformId)
     {
-        if (signer == address(0)) revert ZeroAddress();
+        if (signer == address(0)) revert ZeroSigner();
         if (_platformIdOf[signer] != 0) revert SignerAlreadyRegistered();
 
         platformId = ++platformCount;

@@ -74,7 +74,7 @@ contract PlatformRegistryTest is Test {
 
     function test_revert_registerZeroSigner() public {
         vm.prank(owner);
-        vm.expectRevert(PlatformRegistry.ZeroAddress.selector);
+        vm.expectRevert(PlatformRegistry.ZeroSigner.selector);
         registry.registerPlatform(address(0), nameA);
     }
 
@@ -115,5 +115,29 @@ contract PlatformRegistryTest is Test {
 
         assertEq(registry.platformIdOf(signer), id);
         assertTrue(registry.isActiveSigner(signer));
+    }
+
+    /// @dev Numeric fuzz over `platformId` (`deactivatePlatform`'s only numeric
+    ///      parameter), pinning two properties across N registrations in one run
+    ///      rather than the usual single-registration fuzz: ids stay monotonic
+    ///      1..n as they're assigned, and deactivating one id never touches any
+    ///      other id's active/id-mapping state.
+    function testFuzz_idsAreMonotonicAndDeactivationIsIdScoped(uint8 rawCount, uint8 rawTarget) public {
+        uint256 n = bound(uint256(rawCount), 2, 20);
+
+        vm.startPrank(owner);
+        for (uint256 i = 1; i <= n; i++) {
+            assertEq(registry.registerPlatform(address(uint160(0x1000 + i)), nameA), uint32(i));
+        }
+        uint32 target = uint32(bound(uint256(rawTarget), 1, n));
+        registry.deactivatePlatform(target);
+        vm.stopPrank();
+
+        for (uint256 i = 1; i <= n; i++) {
+            address signer = address(uint160(0x1000 + i));
+            assertEq(registry.platformIdOf(signer), uint32(i), "id mapping survives deactivation");
+            assertEq(registry.isActiveSigner(signer), i != target, "only the named id goes inactive");
+        }
+        assertEq(registry.platformCount(), uint32(n));
     }
 }

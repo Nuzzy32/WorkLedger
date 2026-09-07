@@ -177,9 +177,11 @@ contract RatingRegistry is EIP712 {
     /// @param worker Worker to score.
     /// @return scoreBps Score in basis points.
     function scoreOf(address worker) external view returns (uint256 scoreBps) {
-        // `registeredAt` is unused; the formula only needs the two aggregates.
-        (uint64 registeredAt, uint32 ratingCount, uint32 scoreSum) = WORKERS.statsOf(worker);
-        registeredAt;
+        // Slither flags the discarded first return value. The scoring formula needs
+        // only the two aggregates; `registeredAt` is irrelevant to it, and a tuple
+        // hole is the idiomatic way to say so.
+        // slither-disable-next-line unused-return
+        (, uint32 ratingCount, uint32 scoreSum) = WORKERS.statsOf(worker);
         return previewScoreBps(ratingCount, scoreSum);
     }
 

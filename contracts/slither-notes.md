@@ -7,10 +7,10 @@ Slither version: 0.11.6
 
 Last run: 2026-09-07
 
-Result: 9 findings, all Low or Informational. **No findings at Medium or
+Result: 8 findings, all Low or Informational. **No findings at Medium or
 High.**
 
-## One Medium finding was found and fixed, not ignored
+## One Medium finding was found and suppressed with justification, not ignored
 
 The first run of Slither on this codebase (before this task's other changes)
 reported one Medium-severity finding:
@@ -32,16 +32,31 @@ immutable, trusted, in-repo contract with no success/failure return value,
 and a failure there would revert the whole call rather than return a value
 to ignore.
 
-That argument was not used to wave the finding away. Instead `scoreOf` was
-changed to name all three return values explicitly
-(`uint64 registeredAt, uint32 ratingCount, uint32 scoreSum`) rather than
-skipping the first positionally, with a comment stating that the aggregate
-is intentionally unread. Slither no longer classifies the value as "ignored"
-under this pattern; re-running after the change dropped the Medium finding
-entirely, at the cost of one new Informational `redundant-statements` result
-(the explicit no-op statement that keeps the compiler from flagging an
-unused local), listed in the table below. Net effect: no Medium finding, no
-behavior change, one Informational trade.
+That argument was not used to wave the finding away, and it was not fixed by
+contorting the source either. An earlier version of this fix named all three
+return values explicitly (`uint64 registeredAt, uint32 ratingCount, uint32
+scoreSum`) and then left a bare `registeredAt;` statement to keep the
+compiler from flagging the unused local — which did make Slither stop
+classifying the value as "ignored," but replaced one lint finding with code
+that reads worse than the problem it solved: a dangling no-op statement any
+future reader has to puzzle over, and a natural target for someone to delete
+as dead code, which would silently reintroduce the finding.
+
+`scoreOf` now keeps the idiomatic tuple-hole discard,
+`(, uint32 ratingCount, uint32 scoreSum) = WORKERS.statsOf(worker);`, and the
+Medium finding is suppressed directly with a `// slither-disable-next-line
+unused-return` immediately above the call, plus a comment explaining that the
+discard is deliberate — the formula only needs the two aggregates and
+`registeredAt` is irrelevant to it. This is the same pattern already used in
+this codebase for the three `uint64(block.timestamp)` casts (see below):
+use the tool's own suppression mechanism with a documented reason, rather
+than reshaping working code to satisfy a detector that cannot distinguish
+"ignored a value that mattered" from "deliberately discarded a component the
+formula does not need." Re-running Slither after this change confirms the
+Medium finding no longer appears anywhere in the output, with no
+`redundant-statements` (or any other) finding introduced in its place. Net
+effect: no Medium finding, no behavior change, no new findings of any
+severity.
 
 ## Low and informational findings, deliberately not changed
 
@@ -51,7 +66,12 @@ behavior change, one Informational trade.
 | `timestamp` | `PlatformRegistry.isActiveSigner` | Flags `platformId != 0 && _platforms[platformId].active` — a boolean/id comparison with no `block.timestamp` anywhere in it. This one is a Slither false positive from the same "the struct has a timestamp field, so flag comparisons that touch it" heuristic; `active` is a `bool`, not time-based. No change possible or needed. |
 | `naming-convention` | `RatingRegistry.WORKERS`, `RatingRegistry.PLATFORMS`, `RatingRegistry.PRIOR_SCORE_BPS`, `RatingRegistry.PRIOR_WEIGHT`, `WorkerRegistry.INITIALIZER` | `SCREAMING_SNAKE_CASE` for constants and immutables is the project's own naming convention (`CLAUDE.md`), not an oversight. Renaming to `mixedCase` would contradict the project's own style rules to satisfy a linter default. |
 | `pragma` | whole project | Two solc version constraints are in play: `0.8.24` (pinned exactly in `src/`, per `CLAUDE.md` and `foundry.toml`) and OpenZeppelin's `^0.8.20` in `lib/`. The pin is deliberate — reproducible bytecode for Basescan verification — and this repo's own contracts do not have mixed pragmas; the mismatch is against a vendored dependency, which `--exclude-dependencies` does not fully silence for this particular detector. |
-| `redundant-statements` | `RatingRegistry.scoreOf` | The bare `registeredAt;` statement is the explicit no-op left behind by the Medium-severity fix above — it exists only to name and then intentionally not use one of `statsOf`'s three return values, documented with a comment at the call site. |
+
+## Accepted findings, suppressed with justification
+
+| Detector | Location | Why it is suppressed rather than fixed by rewriting |
+|---|---|---|
+| `unused-return` | `RatingRegistry.scoreOf` | Originally the Medium finding described above. `scoreOf` discards the first of `WorkerRegistry.statsOf`'s three return values — `(, uint32 ratingCount, uint32 scoreSum) = WORKERS.statsOf(worker);` — because the scoring formula in `previewScoreBps` only ever needs `ratingCount` and `scoreSum`; `registeredAt` is genuinely irrelevant to it, not a mistake. A tuple hole is the idiomatic Solidity way to say that, so the code was kept in that form and the finding suppressed directly with `// slither-disable-next-line unused-return` plus a comment at the call site explaining the discard is deliberate. Not classified as a false positive: `unused-return` is doing exactly its job of flagging a discarded return value, and in most call sites that would be a real defect — it just isn't one here. |
 
 ## Known lint baseline in `test/`, not suppressed
 

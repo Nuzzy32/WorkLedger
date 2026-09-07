@@ -5,7 +5,10 @@ carry to another instead of resetting to zero.
 
 Runs on Base Sepolia testnet. No real money, no token.
 
-> Rename the project before you publish. `PortaRep` is a placeholder.
+> Rename the project before you publish. `PortaRep` is a placeholder. The name
+> is also the EIP-712 domain `RatingRegistry` signs attestations under, so
+> renaming it changes the domain separator: every attestation signed before
+> the rename stops verifying, and `RatingRegistry` must be redeployed.
 
 ## The problem
 
@@ -45,6 +48,10 @@ so none of it goes there.
 ## Known limits
 
 - One owner key controls the platform allowlist. Not decentralized.
+- A compromised platform *signing* key forges ratings outright — a different
+  key with a different blast radius than the owner key above. `contracts/test/Attacks.t.sol`
+  tests this deliberately: attestations signed with a stolen platform key all
+  succeed.
 - A worker sitting very low still gains by resetting their address. Closing this
   needs one-account-per-person, which needs either a central identity check or a
   zero-knowledge uniqueness proof. Neither is built.
@@ -70,6 +77,8 @@ viem, wagmi, Privy, Supabase.
 | `docs/SECURITY.md` | Threat model |
 | `docs/DESIGN-SYSTEM.md` | Tokens and components |
 | `docs/ROADMAP.md` | Milestones |
+| `docs/DECISIONS.md` | Where the contracts, tests, and docs deviate from each other, and why |
+| `contracts/slither-notes.md` | Static-analysis run and findings |
 
 ## Running locally
 

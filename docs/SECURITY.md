@@ -73,7 +73,7 @@ touch them.
 
 | Risk | Mitigation |
 |---|---|
-| Access control gaps | `Ownable` for the registry, constructor-set caller for stats updates, tested |
+| Access control gaps | `Ownable` for the registry, deployer-set once for stats updates, tested |
 | Integer truncation | Scale to basis points before dividing, pinned tests |
 | Unbounded loops | No arrays that grow with rating count, aggregates only |
 | Reentrancy | `submitRating` calls `WORKERS` and `PLATFORMS`, but both are immutable, in-repo contracts that make no outbound calls of their own, and all state is written before either call runs |

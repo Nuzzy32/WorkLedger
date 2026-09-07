@@ -3,8 +3,8 @@
 This file exists because the contracts, tests, and docs occasionally disagree
 with each other, and a reviewer who spots one of those disagreements should
 find the reasoning here instead of assuming a mistake. Every entry names the
-doc it deviates from, why, and what it costs. `RatingRegistry.sol:35`,
-`RatingRegistry.sol:106` (approximate — see the file's own `@dev` comments),
+doc it deviates from, why, and what it costs. `RatingRegistry.sol:38`,
+`RatingRegistry.sol:110` (approximate — see the file's own `@dev` comments),
 `WorkerRegistry.sol`, and `RatingRegistry.submit.t.sol` point here.
 
 ## A. `WorkerRegistry.setRatingRegistry` is a write-once setter, not a constructor argument
@@ -16,6 +16,10 @@ address in its own constructor to satisfy the doc literally — a deployment
 cycle with no satisfying order, since neither contract can exist before the
 other.
 
+`docs/SECURITY.md`'s "Access control gaps" row is a second document this
+deviation touches: it described the stats-update caller as "constructor-set"
+until corrected to "deployer-set once," matching the setter below.
+
 **Resolution.** `WorkerRegistry` exposes `setRatingRegistry(address)`,
 callable exactly once, only by the address that deployed `WorkerRegistry`
 (`INITIALIZER`, captured in the constructor). A second call reverts
@@ -25,9 +29,27 @@ callable exactly once, only by the address that deployed `WorkerRegistry`
 `setRatingRegistry` with `RatingRegistry`'s address. Same write-once end
 state as a constructor argument, no cycle.
 
-**Cost.** One extra transaction at deploy time, and one more codepath
-(`recordRating` reverts with `NotRatingRegistry()` before initialization,
-since `ratingRegistry` reads as `address(0)` until the setter runs).
+**Cost.** Not just one extra transaction — a separate transaction that can be
+forgotten in a way a constructor argument cannot. A constructor argument is
+part of the deploy call; there is no state where the contract exists but the
+argument was skipped. `setRatingRegistry` is not: deploy `WorkerRegistry`,
+deploy `RatingRegistry`, and stop, and the result is a system where workers
+register successfully and no rating can ever be recorded — permanently,
+since the setter is callable exactly once and only by `INITIALIZER`. The
+only fix is redeploying `WorkerRegistry`, which loses every registration
+made against it. Calling the setter with the wrong address is just as
+permanent: `AlreadyInitialized()` blocks any correction, and the freeze is
+identical. There is also one more codepath (`recordRating` reverts with
+`NotRatingRegistry()` before initialization, since `ratingRegistry` reads as
+`address(0)` until the setter runs).
+
+**Mitigation owed to the next milestone.** The deploy script must call
+`setRatingRegistry` and assert `workers.ratingRegistry() ==
+address(ratings)` before it reports success, rather than assuming the call
+landed. The deployment record it produces should carry all three
+addresses — `WorkerRegistry`, `PlatformRegistry`, and `RatingRegistry` — so
+the wiring is auditable after the fact instead of only inferable from a
+successful `setRatingRegistry` transaction.
 
 ## B. The nonce check runs after signature recovery, not before
 
@@ -59,11 +81,14 @@ submittedAt, contentHash`. `docs/DATA-MODEL.md` declares it `worker, client,
 platformId, score, submittedAt, contentHash` — a different order, same
 fields and types.
 
-The two orders pack differently. `docs/DATA-MODEL.md`'s order fills a slot
-with `address worker` (20 bytes) alone, since the next field, `address
-client`, is another full 20-byte value that cannot share a slot with it, so
-`platformId`/`score`/`submittedAt` fill a second slot and `contentHash` a
-third, plus `client` alone takes its own slot — 4 slots. The contract's order
+The two orders pack differently. `docs/DATA-MODEL.md`'s order — `worker,
+client, platformId, score, submittedAt, contentHash` — puts `address worker`
+(20 bytes) alone in slot 0, since the next field, `address client`, is
+another full 20-byte value that cannot share a slot with it. Slot 1 then
+holds `client` (20B) + `platformId` (4B) + `score` (1B), 25 of 32 bytes;
+`submittedAt`'s 8 more bytes would make 33, so it spills into slot 2 alone.
+`contentHash` (32B, a full word regardless) takes slot 3 — 4 slots. The
+contract's order
 packs `worker` (20B) + `platformId` (4B) + `score` (1B) into 25 of slot 0's
 32 bytes, `client` (20B) + `submittedAt` (8B) into 28 of slot 1's 32 bytes,
 and `contentHash` (32B, a full word regardless) into slot 2 — 3 slots.
@@ -161,6 +186,19 @@ depends on check 5 existing.
 
 **Cost.** None; same bytecode size, different error name.
 
+**The same class, found again.** `error ZeroAddress()` was independently
+declared in all three contracts, and its selector — `0xd92e233d` — collides
+across all three for the identical reason: no contract-level namespacing.
+No test was mis-certified by it, but only because every existing assertion
+on `ZeroAddress` happened to sit on a call path involving just one of the
+three contracts. That is incidental, not designed, and it is the same
+collision class this entry documents for `WorkerNotRegistered` /
+`UnknownWorker` — a lesson worth applying to every instance of a name, not
+just the first one found. `PlatformRegistry`'s `ZeroAddress()` was renamed
+to `ZeroSigner()` and `WorkerRegistry`'s to `ZeroRegistry()`;
+`RatingRegistry` keeps `ZeroAddress()`, since no spec document names any of
+the three and two renames already resolve the collision.
+
 ## G. Two gas instruments, two sets of numbers
 
 Two tests — `WorkerRegistry.t.sol`'s `test_gas_registerUnderBudget` and
@@ -202,6 +240,18 @@ with a different mandated design choice:
   `docs/SECURITY.md` describes under "Signature replay."
 - The struct is already packed to the minimum 3 slots (decision C).
 - Signature recovery is explicitly told not to be optimized away, above.
+
+One lever does not collide with a mandated design and was still not taken:
+`submitRating` calls `PLATFORMS.isActiveSigner(signer)` and then
+`PLATFORMS.platformIdOf(signer)`, two external calls that both read the same
+`_platformIdOf[signer]` slot. A single `PlatformRegistry` function returning
+`(uint32 id, bool active)` would drop one of them — worth roughly 700 gas,
+since the account and slot are already warm by the second call. That is
+under 3% of the 25,190-gas gap to the 120k target, so it would not change
+this entry's conclusion, and `docs/CONTRACTS.md` does not document such a
+function on `IPlatformRegistry` — adding one means growing an interface the
+spec already pins, for a sub-1%-of-total saving. Not taken; recorded so this
+entry is exhaustive because the search was, not because it stopped early.
 
 **The structural floor.** A successful `submitRating` call touches four cold
 storage slots on its first write to each: the nonce mapping
@@ -253,3 +303,11 @@ tests instead of the one impossible assertion.
 zero-knowledge uniqueness proof — either of which is out of scope for this
 milestone and changes the trust model in ways that need an explicit product
 decision, not a scoring tweak.
+
+## Note: renaming the project redeploys `RatingRegistry`
+
+The EIP-712 domain name is the literal string `"PortaRep"`
+(`RatingRegistry.sol:93`). Since the domain separator folds the domain name
+in, renaming the project changes it, which invalidates every attestation
+signed under the old name and requires redeploying `RatingRegistry`. See the
+README's rename note.

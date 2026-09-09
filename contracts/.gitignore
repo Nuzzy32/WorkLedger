@@ -3,3 +3,5 @@ cache/
 broadcast/
 !broadcast/**/run-latest.json
 .env
+
+deployments/anvil.json

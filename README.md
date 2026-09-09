@@ -125,3 +125,4 @@ than optimized away.
 `scoreOf`'s `docs/CONTRACTS.md` label of "view, free" is correct for an
 off-chain `eth_call`, where a view function costs nothing. The 6,586 figure
 above is what it costs when another contract calls it on chain instead.
+# WorkLedger

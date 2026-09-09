@@ -306,7 +306,7 @@ decision, not a scoring tweak.
 
 ## Note: renaming the project redeploys `RatingRegistry`
 
-The EIP-712 domain name is the literal string `"PortaRep"`
+The EIP-712 domain name is the literal string `"WorkLedger"`
 (`RatingRegistry.sol:93`). Since the domain separator folds the domain name
 in, renaming the project changes it, which invalidates every attestation
 signed under the old name and requires redeploying `RatingRegistry`. See the

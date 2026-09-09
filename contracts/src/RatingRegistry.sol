@@ -90,7 +90,7 @@ contract RatingRegistry is EIP712 {
     /// @param priorScoreBps Prior score in bps, between 10000 and 50000.
     /// @param priorWeight Prior weight, at least 1.
     constructor(WorkerRegistry workers, PlatformRegistry platforms, uint256 priorScoreBps, uint32 priorWeight)
-        EIP712("PortaRep", "1")
+        EIP712("WorkLedger", "1")
     {
         if (address(workers) == address(0) || address(platforms) == address(0)) revert ZeroAddress();
         if (priorScoreBps < BPS || priorScoreBps > 5 * BPS || priorWeight == 0) revert InvalidPrior();

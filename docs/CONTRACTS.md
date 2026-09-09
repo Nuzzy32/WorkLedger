@@ -87,7 +87,7 @@ bytes32 constant ATTESTATION_TYPEHASH = keccak256(
 );
 ```
 
-Domain name `PortaRep`, version `1`, and the chain id must be in the domain
+Domain name `WorkLedger`, version `1`, and the chain id must be in the domain
 separator. Leave out the chain id and a signature from one network replays on
 another.
 

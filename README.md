@@ -104,7 +104,7 @@ From `contracts/gas-report.txt` (`forge test --gas-report`).
 |---|---|---|---|---|
 | `register` | 23,461 | 44,949 | 45,021 | 45,021 |
 | `submitRating` | 24,588 | ~68,500 | 27,016 | 145,190 |
-| `scoreOf` | 6,591 | 6,591 | 6,591 | 6,591 |
+| `scoreOf` | 6,586 | 6,586 | 6,586 | 6,586 |
 
 `submitRating`'s avg and median are not the real cost. Of the 1,067 recorded
 calls, most are *reverting* calls from the revert suite and the 100-attacker
@@ -123,5 +123,5 @@ update, three cross-contract reads, and ECDSA recovery. See
 than optimized away.
 
 `scoreOf`'s `docs/CONTRACTS.md` label of "view, free" is correct for an
-off-chain `eth_call`, where a view function costs nothing. The 6,591 figure
+off-chain `eth_call`, where a view function costs nothing. The 6,586 figure
 above is what it costs when another contract calls it on chain instead.

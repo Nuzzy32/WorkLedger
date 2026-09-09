@@ -102,12 +102,12 @@ contract RatingRegistry is EIP712 {
     }
 
     /// @notice Submit a rating for an attested job.
-    /// @dev Checks run in the order docs/CONTRACTS.md mandates; signature
-    ///      recovery is last, so an invalid request never pays for it. The
-    ///      nonce check follows recovery because the
-    ///      platform's nonce namespace is unknown until the signer is known;
-    ///      duplicate submission is separately impossible because `jobId` is the
-    ///      storage key. See docs/DECISIONS.md.
+    /// @dev Checks 1-6 run in the order docs/CONTRACTS.md documents, and signature
+    ///      recovery follows them, so an invalid request never pays for it. The
+    ///      nonce check runs after recovery rather than at the doc's step 7,
+    ///      because the platform's nonce namespace is unknowable until the signer
+    ///      is known; duplicate submission is separately impossible because
+    ///      `jobId` is the storage key. See docs/DECISIONS.md entry B.
     /// @param att The platform's attestation.
     /// @param platformSignature EIP-712 signature over `att` by an active platform signer.
     /// @param score Score from 1 to 5.

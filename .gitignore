@@ -4,9 +4,11 @@ CLAUDE.md
 .cursor/
 .cursorrules
 .aider*
+.superpowers/
 
 # secrets
 .env
+*.log
 .env.*
 !.env.example
 *.key

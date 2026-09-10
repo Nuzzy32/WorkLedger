@@ -5,6 +5,7 @@ CLAUDE.md
 .cursorrules
 .aider*
 .superpowers/
+.mcp.json
 
 # secrets
 .env

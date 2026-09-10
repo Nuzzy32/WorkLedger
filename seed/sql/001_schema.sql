@@ -63,12 +63,21 @@ create policy workers_public_read on workers for select using (true);
 drop policy if exists ratings_public_read on ratings;
 create policy ratings_public_read on ratings for select using (true);
 
--- Column-scoped read for the anonymous role.
+-- Column-scoped read for every client-reachable role.
 --
--- RLS is row-level, so the policy above alone would hand an anonymous reader
--- the whole row, client included, and docs/SECURITY.md says the profile must
--- not link a client to a specific comment. Column grants are the only way to
--- withhold one column.
+-- RLS is row-level, so the policy above alone would hand a reader the whole
+-- row, client included, and docs/SECURITY.md says the profile must not link a
+-- client to a specific comment. Column grants are the only way to withhold a
+-- single column.
+--
+-- Both anon AND authenticated are scoped. Supabase's bootstrap grants table
+-- privileges to anon, authenticated, and service_role on every public table,
+-- so narrowing anon alone would leave authenticated holding unrestricted
+-- whole-row select — the same bulk read, merely gated behind a login. No
+-- sign-in path exists yet (Privy arrives in M4), so that gap is not reachable
+-- today; it is closed here rather than left for M4's auth wiring to expose.
+-- service_role is deliberately untouched: it is the server-side key the seeder
+-- itself writes with, and it needs full access.
 --
 -- This narrows a bulk dump; it does not make the linkage private. The chain
 -- publishes it permanently: RatingRegistry.ratingOf(jobId) returns a Rating
@@ -76,16 +85,28 @@ create policy ratings_public_read on ratings for select using (true);
 -- job_id -> comment here. Recorded so nobody mistakes this for a privacy
 -- guarantee it cannot provide.
 --
--- Guarded on pg_roles: the anonymous role is a Supabase construct and does not
--- exist in a plain Postgres, where an unguarded grant would abort the script.
--- The schema has to stay re-appliable in both places.
+-- Guarded on pg_roles: anon and authenticated are Supabase constructs and do
+-- not exist in a plain Postgres, where an unguarded grant would abort the
+-- script. The schema has to stay re-appliable in both places. Both statements
+-- are no-ops on a second apply, so re-running the file is safe.
+--
+-- One consequence for whoever builds the frontend: a scoped role querying
+-- `select *` on ratings now fails outright with "permission denied for column
+-- client" rather than returning a stripped row. Name the columns explicitly.
 do $$
+declare
+  scoped_role text;
 begin
-  if exists (select 1 from pg_roles where rolname = 'anon') then
-    revoke select on ratings from anon;
-    grant select (job_id, worker, platform_id, score, comment, job_title,
-                  submitted_at, tx_hash) on ratings to anon;
-  end if;
+  foreach scoped_role in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = scoped_role) then
+      execute format('revoke select on ratings from %I', scoped_role);
+      execute format(
+        'grant select (job_id, worker, platform_id, score, comment, '
+        || 'job_title, submitted_at, tx_hash) on ratings to %I',
+        scoped_role
+      );
+    end if;
+  end loop;
 end
 $$;
 

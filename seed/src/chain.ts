@@ -142,15 +142,34 @@ export async function ensurePlatforms(ctx: ChainCtx, plan: SeedPlan): Promise<nu
 }
 
 /**
- * Per-account gas float.
- *
- * The busiest client sends roughly 45 `submitRating` transactions at about
- * 200k gas each; the whole 600-rating run costs well under 0.02 ETH on Base
- * Sepolia. anvil keeps a fat float because `anvil_setBalance` is free there
- * and anvil's default base fee opens at 1 gwei.
+ * Which side of a rating an account sits on. The two do very different amounts
+ * of work, so they get different gas floats.
  */
-function fundTargetFor(chainId: number): bigint {
-  return chainId === ANVIL_CHAIN_ID ? parseEther('0.05') : parseEther('0.002')
+export type FundedRole = 'worker' | 'client'
+
+/**
+ * Per-account gas float, by role.
+ *
+ * A worker sends exactly one transaction for the whole run — `register()`, at
+ * roughly 100k gas — because `register()` reads `msg.sender` and nobody can
+ * register on a worker's behalf. The busiest client sends about 45
+ * `submitRating` transactions at roughly 200k gas each. That is around 45x the
+ * work, so funding both to the same figure over-provisions 40 of the 60
+ * accounts by more than an order of magnitude.
+ *
+ * Splitting them takes the deployer's up-front requirement from 0.12 ETH to
+ * 0.06 — the difference between two days of Base Sepolia faucet grants and
+ * one. Both floats still carry a wide cushion: at a hostile 0.1 gwei a worker
+ * needs 0.00001 ETH and the busiest client 0.0009, and Base Sepolia's base fee
+ * normally sits between 0.001 and 0.01 gwei.
+ *
+ * anvil keeps one fat float for both roles: `anvil_setBalance` is a free RPC
+ * call rather than a transfer, so there is nothing to save locally, and
+ * anvil's default base fee opens at 1 gwei — higher than Base Sepolia's.
+ */
+export function fundTargetFor(chainId: number, role: FundedRole): bigint {
+  if (chainId === ANVIL_CHAIN_ID) return parseEther('0.05')
+  return role === 'client' ? parseEther('0.002') : parseEther('0.0005')
 }
 
 /**
@@ -173,27 +192,35 @@ function fundTargetFor(chainId: number): bigint {
  * @returns how many addresses were topped up
  */
 export async function ensureFunded(ctx: ChainCtx, accounts: Accounts): Promise<number> {
-  const needFunding = [...accounts.workers, ...accounts.clients]
+  const needFunding: { account: HDAccount; role: FundedRole }[] = [
+    ...accounts.workers.map((account) => ({ account, role: 'worker' as const })),
+    ...accounts.clients.map((account) => ({ account, role: 'client' as const })),
+  ]
   const isAnvil = ctx.config.chainId === ANVIL_CHAIN_ID
-  const fundTarget = fundTargetFor(ctx.config.chainId)
 
-  const withBalances: { account: HDAccount; balance: bigint }[] = []
-  for (const account of needFunding) {
-    withBalances.push({ account, balance: await ctx.publicClient.getBalance({ address: account.address }) })
+  const withBalances: { account: HDAccount; balance: bigint; target: bigint }[] = []
+  for (const { account, role } of needFunding) {
+    withBalances.push({
+      account,
+      balance: await ctx.publicClient.getBalance({ address: account.address }),
+      target: fundTargetFor(ctx.config.chainId, role),
+    })
   }
 
   if (!isAnvil) {
     // anvil_setBalance cannot fail this way, so the precheck only matters off anvil.
     const shortfall = withBalances.reduce(
-      (sum, { balance }) => (balance < fundTarget ? sum + (fundTarget - balance) : sum),
+      (sum, { balance, target }) => (balance < target ? sum + (target - balance) : sum),
       0n,
     )
     const deployerBalance = await ctx.publicClient.getBalance({ address: accounts.deployer.address })
     if (deployerBalance < shortfall) {
       throw new Error(
         `deployer ${accounts.deployer.address} holds ${formatEther(deployerBalance)} ETH but needs ` +
-          `at least ${formatEther(shortfall)} ETH to fund ${needFunding.length} accounts to ` +
-          `${formatEther(fundTarget)} ETH each.`,
+          `at least ${formatEther(shortfall)} ETH to fund ${accounts.workers.length} workers to ` +
+          `${formatEther(fundTargetFor(ctx.config.chainId, 'worker'))} ETH each and ` +
+          `${accounts.clients.length} clients to ` +
+          `${formatEther(fundTargetFor(ctx.config.chainId, 'client'))} ETH each.`,
       )
     }
   }
@@ -209,15 +236,15 @@ export async function ensureFunded(ctx: ChainCtx, accounts: Accounts): Promise<n
   const deployer = ctx.walletClientFor(accounts.deployer)
   let topped = 0
 
-  for (const { account, balance } of withBalances) {
-    if (balance >= fundTarget) continue
+  for (const { account, balance, target } of withBalances) {
+    if (balance >= target) continue
 
     if (testClient) {
-      await testClient.setBalance({ address: account.address, value: fundTarget })
+      await testClient.setBalance({ address: account.address, value: target })
     } else {
       const hash = await deployer.sendTransaction({
         to: account.address,
-        value: fundTarget - balance,
+        value: target - balance,
         chain: resolveChain(ctx.config.chainId),
         account: accounts.deployer,
       })

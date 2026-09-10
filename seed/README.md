@@ -54,9 +54,33 @@ deployer (index 0) — never the anvil default — and run the deploy script
 against that RPC URL before running `npm run seed`. `loadConfig` accepts only
 `31337` and `84532`; anything else, mainnet or not, is rejected.
 
-The deployer needs roughly **0.12 ETH**: 60 accounts (40 workers, 20 clients)
-at a 0.002 ETH float each, plus its own gas for the deploy and for topping
-those accounts up.
+The deployer needs roughly **0.06 ETH**, which one Base Sepolia faucet grant
+covers:
+
+| Role | Count | Float each | Total |
+|---|---|---|---|
+| Client | 20 | 0.002 ETH | 0.04 ETH |
+| Worker | 40 | 0.0005 ETH | 0.02 ETH |
+
+Plus the deployer's own gas for the deploy and for the 60 top-up transfers.
+
+The two floats differ because the work does. A worker sends exactly one
+transaction for the whole run — `register()` at roughly 100k gas, and it has to
+be the worker's own transaction because `register()` reads `msg.sender`. The
+busiest client sends about 45 `submitRating` transactions at roughly 200k gas
+each. Funding both roles to the client's figure would demand 0.12 ETH, or two
+days of faucet grants, to over-provision 40 of the 60 accounts by more than an
+order of magnitude.
+
+Both floats keep a wide cushion. At a deliberately hostile 0.1 gwei a worker
+needs 0.00001 ETH and the busiest client 0.0009; Base Sepolia's base fee
+normally sits between 0.001 and 0.01 gwei.
+
+If the deployer is short, `ensureFunded` sums the whole shortfall and throws
+before sending anything, naming both the balance it found and the figure it
+needs — it does not discover the problem partway through and leave a
+half-funded account set. Fund with a cushion over the number it reports, since
+that number counts transferred value and not the deployer's own gas.
 
 ## Tests
 

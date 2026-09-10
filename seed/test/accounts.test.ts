@@ -36,6 +36,27 @@ test('no worker is also a client, which submitRating forbids', () => {
   }
 })
 
+test('pins deployer and a high-index worker to independently derived addresses', () => {
+  // Expected values come from `cast` (Foundry), which shares no code with viem:
+  //   cast wallet address --mnemonic "test test test test test test test test test test test junk"
+  //   cast wallet address --mnemonic "..." --mnemonic-index 139
+  // If either assertion fails, deriveAccounts is not producing real BIP-44
+  // addresses for this mnemonic — e.g. a constant or a wrong derivation path —
+  // not merely "a value changed".
+  const a = deriveAccounts(MNEMONIC)
+  assert.equal(
+    a.deployer.address,
+    '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+    'deployer (index 0) does not match cast: derivation is not producing real BIP-44 addresses',
+  )
+  assert.equal(
+    a.workers.at(-1)?.address,
+    '0x902D6954691BC8f78202B84bcec7fc0cee8FC83E',
+    'worker at index 139 does not match cast: derivation is likely ignoring addressIndex ' +
+      '(e.g. always deriving index 0..N sequentially) rather than deriving the real index',
+  )
+})
+
 test('index ranges match the documented layout', () => {
   assert.equal(ACCOUNT_INDICES.deployer, 0)
   assert.deepEqual(ACCOUNT_INDICES.platforms, [1, 2, 3])

@@ -17,19 +17,23 @@ function required(name: string): string {
   return value
 }
 
-const MAINNET_CHAIN_IDS = new Set([1, 8453, 10, 137, 42161, 56])
+const SUPPORTED_CHAIN_IDS = new Set([31337, 84532])
 
 /**
  * Read and validate the environment.
  *
- * Rejects mainnet chain ids outright: this project is testnet-only by rule, and
- * a mistyped id is the cheapest way to break that rule by accident.
+ * Accepts only the chains this project targets — local anvil (31337) and Base
+ * Sepolia (84532). A denylist of "known mainnets" can never be complete, so
+ * this is an allowlist instead: anything not explicitly supported is rejected,
+ * mainnet or not.
  */
 export function loadConfig(): Config {
   const chainId = Number(required('CHAIN_ID'))
   if (!Number.isInteger(chainId)) throw new ConfigError('CHAIN_ID must be an integer')
-  if (MAINNET_CHAIN_IDS.has(chainId)) {
-    throw new ConfigError(`CHAIN_ID ${chainId} is a mainnet. This project is testnet-only.`)
+  if (!SUPPORTED_CHAIN_IDS.has(chainId)) {
+    throw new ConfigError(
+      `CHAIN_ID ${chainId} is not supported. Use 31337 (anvil) or 84532 (Base Sepolia).`,
+    )
   }
 
   return {

@@ -304,6 +304,70 @@ zero-knowledge uniqueness proof — either of which is out of scope for this
 milestone and changes the trust model in ways that need an explicit product
 decision, not a scoring tweak.
 
+## J. `seed/`'s viem clients set `pollingInterval` per chain
+
+viem's `waitForTransactionReceipt` defaults to a 4,000ms polling interval.
+That default is tuned for a real chain with multi-second block times; it does
+nothing useful against anvil, which mines instantly. Measured before this
+change: roughly 3.6 seconds per submitted rating, which put a full 600-rating
+seed run at close to 36 minutes.
+
+**Resolution.** `seed/src/chain.ts`'s `pollingIntervalFor` sets 100ms for
+chain id 31337 (anvil) and keeps viem's more conservative 2,000ms for
+everything else, including Base Sepolia, where polling faster than its actual
+block time only burns RPC calls for no benefit.
+
+**Cost.** None on anvil; unchanged behavior on Base Sepolia. Measured after
+the change: roughly 110ms per rating, a 33x speedup that brought the full
+600-rating run to about 73 seconds.
+
+## K. `bpsToDecimal` uses integer arithmetic, not `toFixed(2)`
+
+`seed/src/db.ts` converts an on-chain `scoreBps` integer to the string a
+`numeric(4,2)` Postgres column expects. The obvious implementation,
+`(scoreBps / 10_000).toFixed(2)`, does the division in floating point, and not
+every quotient is exactly representable as a double — some exact `x.xx50`
+values (e.g. `44250` basis points, exactly 4.425) round down instead of up
+under standard rounding, because the double closest to `4.425` is a hair
+below it.
+
+**Resolution.** `bpsToDecimal` divides in integers: it rounds `scoreBps / 100`
+to the nearest whole cent first (`Math.round`, which operates on values with
+no fractional-representation error at this scale), then formats whole dollars
+and cents from that integer. Swept every integer `scoreBps` in `[10000,
+50000]` (40,001 values) against an exact round-half-up reference: the integer
+version disagrees on 0 of them, the `toFixed` version disagrees on 192.
+
+**Cost.** None; the integer version is not more code, just different code.
+
+## L. The `ratings` public read is column-scoped, and that narrows a bulk dump rather than making the client-comment linkage private
+
+`docs/SECURITY.md`'s Privacy section states the public profile "does not show
+client addresses in a way that links a client to a specific comment."
+`seed/sql/001_schema.sql` implements the narrower half of that: it revokes
+`select` on the `ratings.client` column from `anon` and `authenticated` and
+grants back only the other columns, so a `select *` against Supabase's REST
+API cannot bulk-dump `job_id -> client -> comment` in one request.
+
+That is not the same guarantee the doc's wording suggests. `RatingRegistry`'s
+`ratingOf(bytes32)` is `external view` and returns the full `Rating` struct,
+`client` field included, so `jobId -> client` is already public and permanent
+on chain. Anyone willing to call `ratingOf` once per job — or to read the
+`RatingSubmitted` event log, which also carries `client` — can join that
+against Postgres's `job_id -> comment` and reconstruct the exact linkage the
+column grant withholds from a single REST query.
+
+**Resolution.** No code change: the column grant is worth keeping, because it
+still closes off the cheapest form of the leak (one unauthenticated request
+against the anon key), and it is documented in `sql/001_schema.sql`'s own
+comments. Recorded here as well because `docs/SECURITY.md:108-109` promises
+more than either the contract or the schema can deliver on its own, and
+rewriting that wording is a product decision for the project owner, not
+something this task should do unasked.
+
+**Cost.** None; this is a documentation gap, not an unpatched vulnerability —
+the underlying data was always going to be on a public chain.
+
 ## Note: renaming the project redeploys `RatingRegistry`
 
 The EIP-712 domain name is the literal string `"WorkLedger"`

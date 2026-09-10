@@ -157,6 +157,26 @@ Stated openly, because a design that names its own gaps is easier to trust.
   scope.
 - **Contracts are immutable.** No proxy, no migration path. Deliberate for a
   project this size, but it means a bug ships permanently.
+- **A testnet seed cannot fake history depth.** Every seeded rating carries
+  the seed day on chain, because `WorkerRegistry.register()` stamps
+  `block.timestamp` at registration and the attestation's `completedAt` is
+  verified against the signature but never stored. A worker seeded today
+  looks like it registered today, no matter how old the demo's invented job
+  titles pretend to be. Demo depth comes from rating count, score
+  distribution, and platform mix instead — not from backdated history.
+- **The seed and deploy pipeline has only run against a local anvil chain.**
+  The Base Sepolia deploy and the Basescan verification commands are
+  documented in [`seed/README.md`](seed/README.md) but have not been
+  executed — that needs a funded testnet key and an API key this environment
+  does not hold.
+- **The Postgres schema has never run against a real database.** No Postgres
+  exists on the machine this was built on. `seed/sql/001_schema.sql` has had
+  three independent readings say it parses and is idempotent; none of those
+  is an actual run against a server.
+- **`writeAll` (the Postgres write path) has no test coverage.** With no local
+  Postgres to run against, a test would have to mock the database client, and
+  a mock only proves the mock behaves as written — not that real SQL against
+  real Postgres does the same thing.
 
 ## Running locally
 
@@ -174,6 +194,34 @@ Expect 67 passing tests. For the gas breakdown:
 ```bash
 forge test --gas-report
 ```
+
+### Seeding a local chain with demo data
+
+```bash
+# terminal 1
+anvil
+
+# terminal 2
+cd contracts
+forge script script/Deploy.s.sol:DeployScript \
+  --rpc-url http://127.0.0.1:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+  --broadcast
+
+cd ../seed
+cp .env.example .env
+npm run seed
+```
+
+No credentials needed: the private key above is anvil's own well-known first
+test account, printed by anvil on every startup, and `.env.example`'s default
+`MNEMONIC` is anvil's own public test mnemonic. `npm run seed` derives 64
+accounts, registers 3 demo platforms and 40 demo workers, submits 600 signed
+ratings, and verifies every resulting score against an independently computed
+expectation. Running it again against the same chain is safe — it is
+idempotent and reports `ratings submitted 0, already present 600` on a second
+pass. See [`seed/README.md`](seed/README.md) for the Base Sepolia path and the
+Basescan verification commands.
 
 There is no `web/` directory yet — the frontend is milestone 3.
 

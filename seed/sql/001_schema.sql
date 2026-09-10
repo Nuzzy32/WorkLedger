@@ -110,4 +110,29 @@ begin
 end
 $$;
 
--- sync_state is indexer bookkeeping, not public data. No read policy.
+-- sync_state is indexer bookkeeping, not public data. No read policy — and no
+-- grant either.
+--
+-- Having no policy is already enough to return zero rows to a client-reachable
+-- role, and that was verified on a live Supabase project: with one row present,
+-- the owner saw 1 and anon saw 0. But Supabase's bootstrap grants table SELECT
+-- to anon and authenticated on every public table, so the reachability was
+-- still there — the protection rested entirely on RLS, and a single permissive
+-- policy added later, or RLS switched off, would expose the table.
+--
+-- Revoking the grant makes it two independent layers instead of one. Guarded on
+-- pg_roles for the same reason as the ratings block: these roles are Supabase
+-- constructs and an unguarded revoke would abort the script on a plain
+-- Postgres. Revoking a privilege a role does not hold is a no-op, so this stays
+-- safe to re-run.
+do $$
+declare
+  scoped_role text;
+begin
+  foreach scoped_role in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = scoped_role) then
+      execute format('revoke all on sync_state from %I', scoped_role);
+    end if;
+  end loop;
+end
+$$;

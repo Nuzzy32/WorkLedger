@@ -1,8 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildPlan, expectedScoreBps } from '../src/plan.ts'
+import { deriveAccounts } from '../src/accounts.ts'
 
 const TAG = 'workledger-demo-v1'
+const MNEMONIC = 'test test test test test test test test test test test junk'
 
 test('produces exactly 3 platforms and 600 ratings', () => {
   const plan = buildPlan(TAG)
@@ -42,9 +44,18 @@ test('all 40 workers receive at least one rating', () => {
   assert.equal(seen.size, 40)
 })
 
-test('no rating has the same worker and client, which the contract forbids', () => {
+test('no rating resolves to the same on-chain address for worker and client', () => {
+  const accounts = deriveAccounts(MNEMONIC)
   for (const r of buildPlan(TAG).ratings) {
-    assert.notEqual(r.workerIndex, r.clientIndex, 'SelfRatingForbidden')
+    const worker = accounts.workers[r.workerIndex]
+    const client = accounts.clients[r.clientIndex]
+    assert.ok(worker, `workerIndex ${r.workerIndex} is out of range`)
+    assert.ok(client, `clientIndex ${r.clientIndex} is out of range`)
+    assert.notEqual(
+      worker.address,
+      client.address,
+      `rating ${r.index}: worker and client derive to the same address, submitRating would revert SelfRatingForbidden()`,
+    )
   }
 })
 

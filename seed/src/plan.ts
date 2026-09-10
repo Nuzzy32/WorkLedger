@@ -154,13 +154,10 @@ export function buildPlan(seedTag: string): SeedPlan {
   const ratings: SeedRating[] = workerSlots.map((workerIndex, index) => {
     const score = MIXED_WORKERS.has(workerIndex) ? mixedScore(rng) : healthyScore(rng)
 
-    // workerIndex and clientIndex are local array indices (0..39 and 0..19),
-    // not the disjoint derivation ranges from accounts.ts, so they can
-    // coincide numerically even though they always resolve to different
-    // accounts. Nudge that rare coincidence away so the plan itself also
-    // shows a self-rating is impossible, matching SelfRatingForbidden.
-    let clientIndex = Math.floor(rng() * CLIENT_COUNT)
-    if (clientIndex === workerIndex) clientIndex = (clientIndex + 1) % CLIENT_COUNT
+    // Clients derive from a disjoint index range in accounts.ts (10-29 vs.
+    // workers' 100-139), so a worker and client never resolve to the same
+    // on-chain address even when these local array indices coincide.
+    const clientIndex = Math.floor(rng() * CLIENT_COUNT)
     const platformIndex = Math.floor(rng() * PLATFORM_NAMES.length)
 
     return {

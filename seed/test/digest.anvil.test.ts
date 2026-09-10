@@ -1,10 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createPublicClient, http, keccak256, stringToBytes } from 'viem'
+import { createPublicClient, http, keccak256, recoverTypedDataAddress, stringToBytes } from 'viem'
 import { foundry } from 'viem/chains'
-import { computeDigest, signAttestation, type Attestation } from '../src/attest.ts'
+import { ATTESTATION_TYPES, attestationDomain, computeDigest, signAttestation, type Attestation } from '../src/attest.ts'
 import { deriveAccounts } from '../src/accounts.ts'
+
+// `deriveAccounts` always returns fixed-length arrays (40 workers, 20 clients,
+// 3 platforms — see `ACCOUNT_INDICES` in `../src/accounts.ts`). Every index
+// used below (0-4) is a small literal well within those fixed bounds, so the
+// non-null assertions on `accounts.workers[N]!` / `.clients[N]!` /
+// `.platforms[0]!` can never actually be null.
 
 const RPC = 'http://127.0.0.1:8545'
 const MNEMONIC = 'test test test test test test test test test test test junk'
@@ -76,6 +82,20 @@ test('a signature from an allowlisted signer recovers to that signer', async () 
   const signature = await signAttestation(att, accounts.platforms[0]!, artifact.chainId, artifact.ratingRegistry)
 
   assert.match(signature, /^0x[0-9a-f]{130}$/, 'expected a 65-byte r,s,v signature')
+
+  const recovered = await recoverTypedDataAddress({
+    domain: attestationDomain(artifact.chainId, artifact.ratingRegistry),
+    types: ATTESTATION_TYPES,
+    primaryType: 'Attestation',
+    message: att,
+    signature,
+  })
+
+  assert.equal(
+    recovered,
+    accounts.platforms[0]!.address,
+    'signature does not recover to the signing platform; the contract would reject it as UnknownPlatform()',
+  )
 })
 
 test('changing any signed field changes the digest', () => {

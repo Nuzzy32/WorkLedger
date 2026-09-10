@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg:          #FAFAF9;
+  --color-surface:     #FFFFFF;
+  --color-border:      #E7E5E4;
+  --color-fg:          #1C1917;
+  --color-fg-muted:    #78716C;
+
+  --color-accent:      #1E40AF;
+  --color-accent-weak: #EFF6FF;
+
+  --color-verified:    #15803D;
+  --color-caution:     #B45309;
+  --color-danger:      #B91C1C;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 24px;
+  }
+
+  /* Score numbers must not jitter as digits change width. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}

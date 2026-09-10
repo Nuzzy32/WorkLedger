@@ -20,6 +20,7 @@ node_modules/
 .next/
 out/
 .vercel/
+*.tsbuildinfo
 
 # foundry
 contracts/out/

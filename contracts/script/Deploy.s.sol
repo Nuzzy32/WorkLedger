@@ -68,6 +68,7 @@ contract DeployScript is Script {
         vm.serializeAddress(json, "workerRegistry", workers);
         string memory out = vm.serializeAddress(json, "ratingRegistry", ratings);
 
+        vm.createDir(dir, true);
         vm.writeJson(out, path);
         console.log("artifact written", path);
     }

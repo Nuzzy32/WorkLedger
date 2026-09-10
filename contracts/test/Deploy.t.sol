@@ -64,4 +64,44 @@ contract DeployTest is Test {
         assertEq(ratings.ratingOf(att.jobId).score, 5, "a freshly deployed system must accept a rating");
         assertEq(ratings.scoreOf(worker), 33_333, "one 5-star reads as unproven, not perfect");
     }
+
+    function test_run_writesArtifactWithAllFiveKeysMatchingDeployment() public {
+        DeployScript script = new DeployScript();
+
+        string memory path = string.concat(vm.projectRoot(), "/deployments/anvil.json");
+        if (vm.exists(path)) vm.removeFile(path);
+
+        script.run();
+
+        assertTrue(vm.exists(path), "run() must write the artifact to disk");
+
+        string memory json = vm.readFile(path);
+        assertEq(vm.parseJsonUint(json, ".chainId"), block.chainid, "artifact chainId must match");
+        assertEq(vm.parseJsonUint(json, ".block"), block.number, "artifact block must match");
+
+        address platformsAddr = vm.parseJsonAddress(json, ".platformRegistry");
+        address workersAddr = vm.parseJsonAddress(json, ".workerRegistry");
+        address ratingsAddr = vm.parseJsonAddress(json, ".ratingRegistry");
+
+        // Prove these are the real, wired contracts run() just deployed, not stale
+        // or unrelated addresses that merely happen to decode as JSON.
+        assertEq(
+            WorkerRegistry(workersAddr).ratingRegistry(),
+            ratingsAddr,
+            "artifact workerRegistry must be wired to artifact ratingRegistry"
+        );
+        assertEq(
+            address(RatingRegistry(ratingsAddr).WORKERS()),
+            workersAddr,
+            "artifact ratingRegistry must point back at artifact workerRegistry"
+        );
+        assertEq(
+            address(RatingRegistry(ratingsAddr).PLATFORMS()),
+            platformsAddr,
+            "artifact ratingRegistry must point at artifact platformRegistry"
+        );
+
+        vm.removeFile(path);
+        assertFalse(vm.exists(path), "test must clean up the artifact it wrote");
+    }
 }

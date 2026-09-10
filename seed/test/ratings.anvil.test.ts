@@ -21,6 +21,11 @@ const config = {
   seedTag: 'workledger-demo-v1',
 }
 
+// Carried from test 1 to test 2: without it, both tests pass on an
+// already-seeded chain (0 submitted + 600 skipped, then 0 submitted) and the
+// suite never proves a submission happened in this run.
+let firstSubmitted = -1
+
 function ctx(): ChainCtx {
   const accounts = deriveAccounts(MNEMONIC)
   const addresses = loadDeployment(31337)
@@ -37,6 +42,7 @@ test('submits all 600 ratings and every score matches the plan', async () => {
   await ensureWorkersRegistered(c, c.accounts)
 
   const result = await submitRatings(c, plan, platformIds)
+  firstSubmitted = result.submitted
   assert.equal(result.submitted + result.skipped, 600)
   assert.equal(result.txHashes.size, 600, 'every jobId needs a tx hash for the Postgres row')
 
@@ -52,6 +58,12 @@ test('re-running submits nothing: the chain is the checkpoint', async () => {
   const again = await submitRatings(c, plan, platformIds)
   assert.equal(again.submitted, 0, 'ratingOf(jobId) must gate resubmission')
   assert.equal(again.skipped, 600)
+  assert.equal(
+    firstSubmitted + again.submitted,
+    600,
+    'the two passes together must account for all 600 submissions — if this ' +
+      'fails at 0, the chain was already seeded and neither pass proved anything',
+  )
 })
 
 test('the sparse worker sits below the unproven threshold of 10', async () => {

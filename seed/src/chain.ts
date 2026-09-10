@@ -241,6 +241,24 @@ export async function submitRatings(
   let submitted = 0
   let skipped = 0
 
+  // One unbounded getLogs for the whole event, not one per skipped rating.
+  // A resumed run can skip up to 600 ratings, and public Base Sepolia RPCs
+  // cap eth_getLogs block ranges — 600 full-range requests would be throttled
+  // or rejected there. Indexing once turns 600 requests into 1.
+  const submittedLogs = await ctx.publicClient.getLogs({
+    address: ctx.addresses.ratingRegistry,
+    event: RATING_SUBMITTED_EVENT,
+    fromBlock: 0n,
+    toBlock: 'latest',
+  })
+  const knownTxHashes = new Map<Hex, Hex>()
+  for (const log of submittedLogs) {
+    const jobId = log.args.jobId
+    if (jobId !== undefined && log.transactionHash !== null) {
+      knownTxHashes.set(jobId, log.transactionHash)
+    }
+  }
+
   for (const rating of plan.ratings) {
     const existing = await ctx.publicClient.readContract({
       address: ctx.addresses.ratingRegistry,
@@ -256,14 +274,7 @@ export async function submitRatings(
       // A placeholder here would violate docs/DATA-MODEL.md's rule that no
       // Postgres row may exist without a confirmed transaction hash — and a
       // resumed run would then write rows that point at nothing.
-      const logs = await ctx.publicClient.getLogs({
-        address: ctx.addresses.ratingRegistry,
-        event: RATING_SUBMITTED_EVENT,
-        args: { jobId: rating.jobId },
-        fromBlock: 0n,
-        toBlock: 'latest',
-      })
-      const recovered = logs[0]?.transactionHash
+      const recovered = knownTxHashes.get(rating.jobId)
       if (recovered === undefined) {
         throw new Error(
           `jobId ${rating.jobId} is on chain but has no RatingSubmitted log. ` +

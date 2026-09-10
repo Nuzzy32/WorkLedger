@@ -1,0 +1,19 @@
+{
+  "name": "workledger-seed",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --import tsx test/*.test.ts",
+    "seed": "node --env-file=.env --import tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "2.21.55",
+    "postgres": "3.4.5"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "tsx": "4.19.2",
+    "@types/node": "22.9.0"
+  }
+}

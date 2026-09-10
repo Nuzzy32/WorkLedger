@@ -5,16 +5,21 @@ import {
   createTestClient,
   http,
   parseEther,
+  zeroAddress,
+  keccak256,
+  stringToBytes,
   type Address,
   type Chain,
   type HDAccount,
+  type Hex,
   type PublicClient,
 } from 'viem'
 import { foundry, baseSepolia } from 'viem/chains'
-import { PLATFORM_REGISTRY_ABI, WORKER_REGISTRY_ABI } from './abi.ts'
+import { PLATFORM_REGISTRY_ABI, WORKER_REGISTRY_ABI, RATING_REGISTRY_ABI, RATING_SUBMITTED_EVENT } from './abi.ts'
 import type { Config } from './config.ts'
 import type { Accounts } from './accounts.ts'
-import type { SeedPlan } from './plan.ts'
+import { expectedScoreBps, type SeedPlan } from './plan.ts'
+import { signAttestation, type Attestation } from './attest.ts'
 
 const ANVIL_CHAIN_ID = 31337
 
@@ -61,13 +66,25 @@ export function resolveChain(chainId: number): Chain {
   throw new Error(`Unsupported chain id ${chainId}. This project targets anvil or Base Sepolia.`)
 }
 
+/**
+ * viem defaults to a 4000ms polling interval for `waitForTransactionReceipt`.
+ * anvil mines instantly, so that default turns every submission into an
+ * average ~2s wait for nothing. Base Sepolia actually needs to wait for
+ * blocks (~2s block time), so polling faster there just burns RPC calls.
+ */
+function pollingIntervalFor(chainId: number): number {
+  return chainId === ANVIL_CHAIN_ID ? 100 : 2_000
+}
+
 export function makeClients(config: Config) {
   const chain = resolveChain(config.chainId)
   const transport = http(config.rpcUrl)
+  const pollingInterval = pollingIntervalFor(config.chainId)
 
   return {
-    publicClient: createPublicClient({ chain, transport }),
-    walletClientFor: (account: HDAccount) => createWalletClient({ account, chain, transport }),
+    publicClient: createPublicClient({ chain, transport, pollingInterval }),
+    walletClientFor: (account: HDAccount) =>
+      createWalletClient({ account, chain, transport, pollingInterval }),
   }
 }
 
@@ -201,4 +218,127 @@ export async function ensureWorkersRegistered(ctx: ChainCtx, accounts: Accounts)
   }
 
   return registered
+}
+
+/**
+ * Submit every rating in the plan, skipping any jobId already recorded.
+ *
+ * Idempotency: `ratingOf(jobId).worker != zeroAddress` means the rating landed.
+ * A stored Rating can never have a zero worker, because `submitRating` rejects
+ * unregistered workers and the zero address never registers — so the field is a
+ * sound "already done" sentinel.
+ *
+ * Ratings are sent by the client, because `submitRating` requires
+ * `msg.sender == att.client`.
+ */
+export async function submitRatings(
+  ctx: ChainCtx,
+  plan: SeedPlan,
+  platformIds: number[],
+): Promise<{ submitted: number; skipped: number; txHashes: Map<Hex, Hex> }> {
+  const chain = resolveChain(ctx.config.chainId)
+  const txHashes = new Map<Hex, Hex>()
+  let submitted = 0
+  let skipped = 0
+
+  for (const rating of plan.ratings) {
+    const existing = await ctx.publicClient.readContract({
+      address: ctx.addresses.ratingRegistry,
+      abi: RATING_REGISTRY_ABI,
+      functionName: 'ratingOf',
+      args: [rating.jobId],
+    })
+
+    if (existing.worker !== zeroAddress) {
+      skipped++
+
+      // Recover the REAL transaction hash from the indexed RatingSubmitted log.
+      // A placeholder here would violate docs/DATA-MODEL.md's rule that no
+      // Postgres row may exist without a confirmed transaction hash — and a
+      // resumed run would then write rows that point at nothing.
+      const logs = await ctx.publicClient.getLogs({
+        address: ctx.addresses.ratingRegistry,
+        event: RATING_SUBMITTED_EVENT,
+        args: { jobId: rating.jobId },
+        fromBlock: 0n,
+        toBlock: 'latest',
+      })
+      const recovered = logs[0]?.transactionHash
+      if (recovered === undefined) {
+        throw new Error(
+          `jobId ${rating.jobId} is on chain but has no RatingSubmitted log. ` +
+            `Refusing to continue rather than fabricate a transaction hash.`,
+        )
+      }
+      txHashes.set(rating.jobId, recovered)
+      continue
+    }
+
+    // buildPlan draws workerIndex from [0, WORKER_COUNT), clientIndex from
+    // [0, CLIENT_COUNT), and platformIndex from [0, PLATFORM_NAMES.length) —
+    // exactly the sizes of accounts.workers (40), accounts.clients (20), and
+    // accounts.platforms (3) — so each index is always in bounds.
+    const worker = ctx.accounts.workers[rating.workerIndex]!
+    const client = ctx.accounts.clients[rating.clientIndex]!
+    const platform = ctx.accounts.platforms[rating.platformIndex]!
+
+    const att: Attestation = {
+      jobId: rating.jobId,
+      worker: worker.address,
+      client: client.address,
+      completedAt: rating.completedAt,
+      nonce: BigInt(rating.index),
+    }
+
+    const signature = await signAttestation(
+      att,
+      platform,
+      ctx.config.chainId,
+      ctx.addresses.ratingRegistry,
+    )
+
+    const wallet = ctx.walletClientFor(client)
+    const hash = await wallet.writeContract({
+      address: ctx.addresses.ratingRegistry,
+      abi: RATING_REGISTRY_ABI,
+      functionName: 'submitRating',
+      args: [att, signature, rating.score, keccak256(stringToBytes(rating.comment))],
+      chain,
+      account: client,
+    })
+    await ctx.publicClient.waitForTransactionReceipt({ hash })
+
+    txHashes.set(rating.jobId, hash)
+    submitted++
+  }
+
+  return { submitted, skipped, txHashes }
+}
+
+/**
+ * Compare every worker's on-chain score against the plan-derived score.
+ *
+ * @returns only the mismatches, so an empty array is the success case
+ */
+export async function verifyScores(
+  ctx: ChainCtx,
+  plan: SeedPlan,
+): Promise<{ workerIndex: number; onChain: number; expected: number }[]> {
+  const mismatches: { workerIndex: number; onChain: number; expected: number }[] = []
+
+  for (const [workerIndex, worker] of ctx.accounts.workers.entries()) {
+    const onChain = await ctx.publicClient.readContract({
+      address: ctx.addresses.ratingRegistry,
+      abi: RATING_REGISTRY_ABI,
+      functionName: 'scoreOf',
+      args: [worker.address],
+    })
+    const expected = expectedScoreBps(plan.ratings, workerIndex)
+
+    if (Number(onChain) !== expected) {
+      mismatches.push({ workerIndex, onChain: Number(onChain), expected })
+    }
+  }
+
+  return mismatches
 }

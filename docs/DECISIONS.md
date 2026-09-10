@@ -342,9 +342,13 @@ version disagrees on 0 of them, the `toFixed` version disagrees on 192.
 
 ## L. The `ratings` public read is column-scoped, and that narrows a bulk dump rather than making the client-comment linkage private
 
-`docs/SECURITY.md`'s Privacy section states the public profile "does not show
-client addresses in a way that links a client to a specific comment."
-`seed/sql/001_schema.sql` implements the narrower half of that: it revokes
+`docs/SECURITY.md`'s Privacy section used to state that the public profile
+"does not show client addresses in a way that links a client to a specific
+comment." That wording promised more than the design can deliver and has since
+been corrected to describe a display choice rather than a guarantee; this entry
+is the reasoning behind that correction.
+
+`seed/sql/001_schema.sql` implements the narrower half of the original claim: it revokes
 `select` on the `ratings.client` column from `anon` and `authenticated` and
 grants back only the other columns, so a `select *` against Supabase's REST
 API cannot bulk-dump `job_id -> client -> comment` in one request.

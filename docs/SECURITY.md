@@ -105,9 +105,22 @@ Follow OWASP basics. Nothing exotic.
 - No personal data on chain. Enforced by review, since nothing technical stops it.
 - Comments live off chain and stay deletable.
 - The public profile shows a score, a count, a distribution, and platform names.
-  It does not show client addresses in a way that links a client to a specific
-  comment. See `docs/DECISIONS.md` entry L for how far this guarantee actually
-  reaches.
+  It does not display client addresses next to comments, and the Postgres read
+  grant withholds the `client` column from the roles a browser can reach.
+- **That is a display choice, not a privacy guarantee, and the difference
+  matters.** `RatingRegistry.ratingOf(bytes32)` is `external view` and returns a
+  `Rating` struct carrying `client`, so the chain publishes `jobId -> client`
+  permanently and to everyone. Anyone can read it there and join it against
+  `job_id -> comment` in Postgres. Withholding the column removes the
+  convenience of one bulk query; it does not make the linkage private, and
+  nothing off chain can, because chain data cannot be deleted. An earlier
+  version of this document promised the linkage was not shown, which overstated
+  what the design can deliver. `docs/DECISIONS.md` entry L records the decision
+  and the reasoning.
+- The honest mitigation is upstream, not here: a future version could store
+  `keccak256(client)` on chain instead of the address, at the cost of the
+  client-side checks that currently read it. That is a contract change and has
+  not been made.
 - Demo data uses fictional people.
 
 ## Pre-push checklist

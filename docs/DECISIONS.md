@@ -368,6 +368,31 @@ something this task should do unasked.
 **Cost.** None; this is a documentation gap, not an unpatched vulnerability —
 the underlying data was always going to be on a public chain.
 
+## M. `seed/` uses npm, not pnpm
+
+The stack table implies pnpm. pnpm is not installed on the development
+machine and npm is, and nothing `seed/` depends on — no lockfile format, no
+workspace feature — is pnpm-specific.
+
+**Resolution.** `seed/` is a plain npm project: `package-lock.json`, `npm
+run`, `npm test`. Swap to pnpm later if the rest of the repo ever needs a
+shared workspace; nothing here blocks that.
+
+**Cost.** None.
+
+## N. `seed/` sits outside the layout `CLAUDE.md` documents
+
+`CLAUDE.md`'s repo layout lists `contracts/`, `web/`, and `docs/`. `seed/` is
+none of those: it is a standalone Node project with its own `package.json`
+and `tsconfig.json`, not a Foundry project and not part of the Next.js app.
+
+**Resolution.** No code change. A reader comparing the documented layout
+against the actual tree should expect `seed/` to be there — it is milestone
+2's deliverable, deploy-and-seed tooling that does not belong under either of
+the two documented directories.
+
+**Cost.** None.
+
 ## Note: renaming the project redeploys `RatingRegistry`
 
 The EIP-712 domain name is the literal string `"WorkLedger"`

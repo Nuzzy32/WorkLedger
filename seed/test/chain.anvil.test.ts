@@ -30,8 +30,7 @@ function ctx(): ChainCtx {
 const FRESH_CHAIN_HELP =
   'This suite only proves anything on a chain with no prior seed state: ' +
   'the whole point is watching counts go from nonzero to zero. Restart anvil, ' +
-  'delete contracts/deployments/anvil.json, and redeploy before rerunning ' +
-  '(see task-5-brief.md Step 5).'
+  'delete contracts/deployments/anvil.json, and redeploy before rerunning.'
 
 /**
  * Preconditions the rest of the suite leans on: nobody has registered a

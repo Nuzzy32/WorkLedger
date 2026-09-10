@@ -85,7 +85,7 @@ test('platform rows keep the on-chain id as the primary key', () => {
   assert.equal(row.name, 'Rampung')
 })
 
-test('no seeded comment or name contains a real-looking contact detail', () => {
+test('no seeded comment or job title contains a real-looking contact detail', () => {
   const plan = buildPlan('workledger-demo-v1')
   const text = plan.ratings.map((r) => `${r.comment} ${r.jobTitle}`).join(' ')
   assert.doesNotMatch(text, /@|\+\d{6,}|https?:\/\//, 'fixtures must carry no contact data')

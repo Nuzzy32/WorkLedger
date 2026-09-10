@@ -16,7 +16,7 @@ interface described in `docs/` has not been built.
 | | |
 |---|---|
 | Contracts | 3, immutable, no proxies, no upgrade path |
-| Test suite | **67 passing** — happy paths, every revert path, fuzz, and 11 attack scenarios |
+| Test suite | **73 passing** — happy paths, every revert path, fuzz, and 11 attack scenarios |
 | Static analysis | Slither: **0 medium or high** findings ([notes](contracts/slither-notes.md)) |
 | Deployed to testnet | Not yet — milestone 2 |
 | Web app | Not yet — milestones 3 and 4 |
@@ -189,7 +189,7 @@ cd WorkLedger/contracts
 forge test
 ```
 
-Expect 67 passing tests. For the gas breakdown:
+Expect 73 passing tests. For the gas breakdown:
 
 ```bash
 forge test --gas-report
@@ -230,7 +230,11 @@ There is no `web/` directory yet — the frontend is milestone 3.
 ```
 contracts/
   src/         PlatformRegistry, WorkerRegistry, RatingRegistry
-  test/        6 suites: unit, revert paths, fuzz, attack scenarios
+  test/        7 suites: unit, revert paths, fuzz, attack scenarios, deploy
+seed/
+  src/         Derives accounts, builds the demo dataset, submits it on chain
+  test/        Offline plan/account/db tests plus anvil-only chain tests
+  sql/         The Postgres schema the seed writes into
 docs/          Specs, threat model, and the decision log
 ```
 

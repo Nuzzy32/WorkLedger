@@ -106,7 +106,8 @@ Follow OWASP basics. Nothing exotic.
 - Comments live off chain and stay deletable.
 - The public profile shows a score, a count, a distribution, and platform names.
   It does not show client addresses in a way that links a client to a specific
-  comment.
+  comment. See `docs/DECISIONS.md` entry L for how far this guarantee actually
+  reaches.
 - Demo data uses fictional people.
 
 ## Pre-push checklist

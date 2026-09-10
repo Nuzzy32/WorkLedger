@@ -58,6 +58,12 @@ The deployer needs roughly **0.12 ETH**: 60 accounts (40 workers, 20 clients)
 at a 0.002 ETH float each, plus its own gas for the deploy and for topping
 those accounts up.
 
+## Tests
+
+`npm run test:offline` needs nothing running and covers accounts, plan, attest,
+and db. `npm test` additionally runs the `.anvil` suites, which need a live
+anvil chain and a deployment artifact at `contracts/deployments/anvil.json`.
+
 ## Re-running is safe
 
 Every setup and submission step checks on-chain state before writing:
@@ -69,8 +75,12 @@ tops up gas balances that transaction fees have drawn down since the last
 run, which costs no transactions on anvil (`anvil_setBalance` is a free RPC
 call, not a transfer).
 
-Changing `SEED_TAG` changes every generated `jobId`, so it inserts a second,
-independent dataset alongside the first rather than resuming it.
+Changing `SEED_TAG` changes every generated `jobId`, but it does **not**
+insert a second, independent dataset alongside the first: the nonce is
+`BigInt(rating.index)` with no seed-tag component, and the nonce namespace is
+per-platform, so rating 0 of a second tag reverts `NonceUsed()` against the
+first tag's rating 0. Supporting a second dataset on the same chain and
+platforms would need a seed-tag component folded into the nonce.
 
 ## Postgres schema
 

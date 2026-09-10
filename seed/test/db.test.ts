@@ -14,6 +14,15 @@ test('bpsToDecimal converts basis points to a 2-decimal string', () => {
   assert.equal(bpsToDecimal(20_909), '2.09')
 })
 
+test('bpsToDecimal rounds exact halfway values up, not down', () => {
+  // Float division puts these one unit below the true value, so toFixed(2)
+  // would round them down. Integer arithmetic must not.
+  assert.equal(bpsToDecimal(44_250), '4.43')
+  assert.equal(bpsToDecimal(10_050), '1.01')
+  assert.equal(bpsToDecimal(43_350), '4.34')
+  assert.equal(bpsToDecimal(12_750), '1.28')
+})
+
 test('worker addresses are stored lowercase', () => {
   const row = toWorkerRow(CHECKSUMMED, 'Sari W.', 'Courier, 4 years', 43_333, 30)
   assert.equal(row.address, CHECKSUMMED.toLowerCase())

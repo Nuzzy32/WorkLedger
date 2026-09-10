@@ -42,9 +42,16 @@ export interface AllRows {
   ratings: RatingRow[]
 }
 
-/** 43333 basis points reads as "4.33" for a numeric(4,2) column. */
+/**
+ * 43333 basis points reads as "4.33" for a numeric(4,2) column.
+ *
+ * Integer arithmetic, not `(scoreBps / 10_000).toFixed(2)`: some quotients are
+ * not exactly representable as doubles, so a mathematically exact x.xx50 value
+ * lands one unit low and rounds down. 44250 became "4.42" rather than "4.43".
+ */
 export function bpsToDecimal(scoreBps: number): string {
-  return (scoreBps / 10_000).toFixed(2)
+  const cents = Math.round(scoreBps / 100)
+  return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
 }
 
 export function toPlatformRow(id: number, name: string): PlatformRow {

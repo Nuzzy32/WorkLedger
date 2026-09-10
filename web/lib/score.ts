@@ -7,13 +7,16 @@ export const RECENT_RATING_LIMIT = 10
 /**
  * Basis points to a two-decimal score.
  *
- * Integer arithmetic, matching bpsToDecimal in seed/src/db.ts and
- * docs/DECISIONS.md entry K: toFixed rounds, and previewScoreBps truncates
- * toward zero. Rounding here would print a score the contract never returned.
+ * Uses the same integer arithmetic as bpsToDecimal in seed/src/db.ts to
+ * ensure the verification page's cached score and live chain score never
+ * disagree. See docs/DECISIONS.md entry K: some quotients like 44250 basis
+ * points are not representable exactly as doubles, so naive floating-point
+ * division and toFixed round the wrong way. The solution is integer arithmetic:
+ * round the cents to a whole number, then format from integers.
  */
 export function formatScore(scoreBps: number): string {
-  const hundredths = Math.trunc(scoreBps / 100)
-  return (hundredths / 100).toFixed(2)
+  const cents = Math.round(scoreBps / 100)
+  return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
 }
 
 /** Counts for scores 1 through 5, in that order. */

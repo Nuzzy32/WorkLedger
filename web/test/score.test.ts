@@ -2,12 +2,13 @@ import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 import { countByScore, formatScore, selectState, type ProfileSignals } from '../lib/score.ts'
 
-test('formats basis points by truncating, the way the contract does', () => {
+test('formats basis points by rounding to the nearest cent', () => {
   assert.equal(formatScore(43200), '4.32')
-  assert.equal(formatScore(43299), '4.32') // toFixed would round this to 4.33
+  assert.equal(formatScore(43299), '4.33') // rounds up to the nearest cent, matching bpsToDecimal
   assert.equal(formatScore(30000), '3.00')
   assert.equal(formatScore(50000), '5.00')
   assert.equal(formatScore(40500), '4.05')
+  assert.equal(formatScore(44250), '4.43') // exact half: docs/DECISIONS.md K, naive toFixed would give 4.42
 })
 
 test('counts a rating set into five buckets', () => {

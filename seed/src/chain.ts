@@ -165,6 +165,11 @@ function fundTargetFor(chainId: number): bigint {
  * failing once with both numbers rather than dying mid-run on an opaque
  * insufficient-funds error, leaving a half-funded account set.
  *
+ * That check compares transferred value only; it does not add the deployer's
+ * own gas for up to 60 transfers. A balance landing in the narrow window just
+ * above the shortfall can therefore still exhaust on the last transfer or two.
+ * Fund with a cushion rather than to the exact figure the error reports.
+ *
  * @returns how many addresses were topped up
  */
 export async function ensureFunded(ctx: ChainCtx, accounts: Accounts): Promise<number> {

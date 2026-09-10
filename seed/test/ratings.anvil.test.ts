@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { deriveAccounts } from '../src/accounts.ts'
-import { buildPlan, expectedScoreBps } from '../src/plan.ts'
+import { buildPlan } from '../src/plan.ts'
 import {
   loadDeployment,
   makeClients,
@@ -37,25 +37,26 @@ test('submits all 600 ratings and every score matches the plan', async () => {
   const c = ctx()
   const plan = buildPlan(config.seedTag)
 
-  const platformIds = await ensurePlatforms(c, plan)
+  await ensurePlatforms(c, plan)
   await ensureFunded(c, c.accounts)
   await ensureWorkersRegistered(c, c.accounts)
 
-  const result = await submitRatings(c, plan, platformIds)
+  const result = await submitRatings(c, plan)
   firstSubmitted = result.submitted
   assert.equal(result.submitted + result.skipped, 600)
   assert.equal(result.txHashes.size, 600, 'every jobId needs a tx hash for the Postgres row')
 
-  const mismatches = await verifyScores(c, plan)
+  const { checked, mismatches } = await verifyScores(c, plan)
+  assert.equal(checked, c.accounts.workers.length, 'every worker must actually be compared')
   assert.deepEqual(mismatches, [], 'on-chain scores must equal the plan-derived scores')
 })
 
 test('re-running submits nothing: the chain is the checkpoint', async () => {
   const c = ctx()
   const plan = buildPlan(config.seedTag)
-  const platformIds = await ensurePlatforms(c, plan)
+  await ensurePlatforms(c, plan)
 
-  const again = await submitRatings(c, plan, platformIds)
+  const again = await submitRatings(c, plan)
   assert.equal(again.submitted, 0, 'ratingOf(jobId) must gate resubmission')
   assert.equal(again.skipped, 600)
   assert.equal(
@@ -64,18 +65,4 @@ test('re-running submits nothing: the chain is the checkpoint', async () => {
     'the two passes together must account for all 600 submissions — if this ' +
       'fails at 0, the chain was already seeded and neither pass proved anything',
   )
-})
-
-test('the sparse worker sits below the unproven threshold of 10', async () => {
-  const c = ctx()
-  const plan = buildPlan(config.seedTag)
-  const counts = new Map<number, number>()
-  for (const r of plan.ratings) counts.set(r.workerIndex, (counts.get(r.workerIndex) ?? 0) + 1)
-
-  const sparse = [...counts.entries()].find(([, n]) => n === 2)
-  assert.ok(sparse, 'the plan must contain a 2-rating worker')
-
-  const expected = expectedScoreBps(plan.ratings, sparse[0])
-  assert.ok(expected > 30_000, 'two decent ratings should sit just above the bare prior')
-  assert.ok(expected < 45_000, 'and well below a proven profile')
 })

@@ -274,7 +274,6 @@ export async function ensureWorkersRegistered(ctx: ChainCtx, accounts: Accounts)
 export async function submitRatings(
   ctx: ChainCtx,
   plan: SeedPlan,
-  platformIds: number[],
 ): Promise<{ submitted: number; skipped: number; txHashes: Map<Hex, Hex> }> {
   const chain = resolveChain(ctx.config.chainId)
   const txHashes = new Map<Hex, Hex>()
@@ -371,16 +370,26 @@ export async function submitRatings(
   return { submitted, skipped, txHashes }
 }
 
+export interface ScoreMismatch {
+  workerIndex: number
+  onChain: number
+  expected: number
+}
+
 /**
  * Compare every worker's on-chain score against the plan-derived score.
  *
- * @returns only the mismatches, so an empty array is the success case
+ * @returns `checked`, the number of workers actually compared, alongside the
+ * mismatches. A caller must look at `checked`, not just `mismatches.length ===
+ * 0` — an empty `ctx.accounts.workers` would also produce an empty mismatch
+ * list, on zero comparisons rather than 40 passing ones.
  */
 export async function verifyScores(
   ctx: ChainCtx,
   plan: SeedPlan,
-): Promise<{ workerIndex: number; onChain: number; expected: number }[]> {
-  const mismatches: { workerIndex: number; onChain: number; expected: number }[] = []
+): Promise<{ checked: number; mismatches: ScoreMismatch[] }> {
+  const mismatches: ScoreMismatch[] = []
+  let checked = 0
 
   for (const [workerIndex, worker] of ctx.accounts.workers.entries()) {
     const onChain = await ctx.publicClient.readContract({
@@ -390,11 +399,12 @@ export async function verifyScores(
       args: [worker.address],
     })
     const expected = expectedScoreBps(plan.ratings, workerIndex)
+    checked++
 
     if (Number(onChain) !== expected) {
       mismatches.push({ workerIndex, onChain: Number(onChain), expected })
     }
   }
 
-  return mismatches
+  return { checked, mismatches }
 }

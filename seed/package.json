@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test --import tsx test/*.test.ts",
+    "test:offline": "node --test --import tsx test/accounts.test.ts test/plan.test.ts test/attest.test.ts test/db.test.ts",
     "seed": "node --env-file=.env --import tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },

@@ -50,10 +50,10 @@ async function main(): Promise<void> {
   const registered = await ensureWorkersRegistered(ctx, accounts)
   console.log(`registered ${registered} worker(s)`)
 
-  const { submitted, skipped, txHashes } = await submitRatings(ctx, plan, platformIds)
+  const { submitted, skipped, txHashes } = await submitRatings(ctx, plan)
   console.log(`ratings submitted ${submitted}, already present ${skipped}`)
 
-  const mismatches = await verifyScores(ctx, plan)
+  const { checked, mismatches } = await verifyScores(ctx, plan)
   if (mismatches.length > 0) {
     console.error('SCORE MISMATCH — the chain disagrees with the plan:')
     for (const m of mismatches) {
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
     process.exitCode = 1
     return
   }
-  console.log('all 40 worker scores match the plan')
+  console.log(`all ${checked} worker scores match the plan`)
 
   if (config.databaseUrl === undefined) {
     console.log('DATABASE_URL not set — skipping Postgres writes (chain-only run)')
@@ -73,11 +73,19 @@ async function main(): Promise<void> {
   for (const r of plan.ratings) counts.set(r.workerIndex, (counts.get(r.workerIndex) ?? 0) + 1)
 
   const rows: AllRows = {
-    platforms: plan.platforms.map((p, i) => toPlatformRow(platformIds[i]!, p.name)),
+    platforms: plan.platforms.map((p, i) =>
+      // ensurePlatforms pushes exactly one id per entry of plan.platforms, in
+      // order, so platformIds has the same length and index alignment.
+      toPlatformRow(platformIds[i]!, p.name),
+    ),
     workers: accounts.workers.map((w, i) =>
       toWorkerRow(
         w.address,
-        WORKER_NAMES[i]!,
+        // Fall back rather than assert: raising the worker count above
+        // WORKER_NAMES.length must not let undefined reach display_name.
+        WORKER_NAMES[i] ?? `Worker ${i}`,
+        // i % HEADLINES.length is always in [0, HEADLINES.length), and
+        // HEADLINES is a fixed non-empty literal, so this always resolves.
         HEADLINES[i % HEADLINES.length]!,
         expectedScoreBps(plan.ratings, i),
         counts.get(i) ?? 0,
@@ -85,6 +93,10 @@ async function main(): Promise<void> {
     ),
     ratings: plan.ratings.map((r) =>
       toRatingRow(r, {
+        // buildPlan draws workerIndex/clientIndex/platformIndex from exactly
+        // the sizes of accounts.workers/clients and plan.platforms (see the
+        // matching invariant comment in chain.ts submitRatings), so each
+        // index below is always in bounds.
         workerAddress: accounts.workers[r.workerIndex]!.address,
         clientAddress: accounts.clients[r.clientIndex]!.address,
         platformId: platformIds[r.platformIndex]!,

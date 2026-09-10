@@ -1,50 +1,23 @@
-Compiling 42 files with Solc 0.8.24
-Solc 0.8.24 finished in 1.98s
-Compiler run successful with warnings:
-Warning (2018): Function state mutability can be restricted to view
-   --> test/RatingRegistry.scoring.t.sol:111:5:
-    |
-111 |     function testFuzz_domainSeparatorIsBoundToThisChain(uint64 otherChainId) public {
-    |     ^ (Relevant source part starts here and spans across multiple lines).
-
-
-Ran 9 tests for test/RatingRegistry.scoring.t.sol:RatingRegistryScoringTest
-[PASS] testFuzz_domainSeparatorIsBoundToThisChain(uint64) (runs: 512, μ: 18260, ~: 18260)
-[PASS] testFuzz_oneMoreFiveStarNeverLowersTheScore(uint32) (runs: 512, μ: 19711, ~: 19464)
-Logs:
-  Bound result 13
-
-[PASS] testFuzz_scoreAlwaysWithinOneToFiveStars(uint32,uint32) (runs: 512, μ: 18372, ~: 18309)
-Logs:
-  Bound result 588744
-  Bound result 2361974
-
-[PASS] test_immutablesMatchTheSpec() (gas: 37609)
-[PASS] test_pinnedBasisPoints() (gas: 63656)
-[PASS] test_priorPullsAPerfectRecordDownUntilTheCountIsLarge() (gas: 17257)
-[PASS] test_revert_constructorRejectsBadPriors() (gas: 8661)
-[PASS] test_revert_constructorRejectsZeroRegistries() (gas: 6460)
-[PASS] test_scoreOf_readsWorkerStats() (gas: 129225)
-Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 74.15ms (73.32ms CPU time)
+No files changed, compilation skipped
 
 Ran 11 tests for test/Attacks.t.sol:AttacksTest
-[PASS] test_badMouthing_oneLowRatingCannotSinkAnEstablishedProfile() (gas: 4483609)
+[PASS] test_badMouthing_oneLowRatingCannotSinkAnEstablishedProfile() (gas: 4483633)
 [PASS] test_crossChainReplayIsRejected() (gas: 67270)
-[PASS] test_deactivatedPlatformSignatureIsRejected() (gas: 263665)
+[PASS] test_deactivatedPlatformSignatureIsRejected() (gas: 263677)
 [PASS] test_replayOntoADifferentDeploymentIsRejected() (gas: 75370)
-[PASS] test_replay_fiftyAttemptsAllRevert() (gas: 1608849)
-[PASS] test_replay_sameAttestationTwice() (gas: 189812)
+[PASS] test_replay_fiftyAttemptsAllRevert() (gas: 1608237)
+[PASS] test_replay_sameAttestationTwice() (gas: 189836)
 [PASS] test_scoringConstantsSurviveEveryReachableStateChange() (gas: 433766)
-[PASS] test_sybil_hundredUnattestedRatingsAllRevert() (gas: 5985642)
-[PASS] test_sybil_residualRisk_compromisedPlatformKeySucceeds() (gas: 1458906)
-[PASS] test_whitewashing_costsAWorkerAboveThePrior() (gas: 2954800)
-[PASS] test_whitewashing_lowRatedWorkerStillGains() (gas: 7273941)
-Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 74.34ms (55.60ms CPU time)
+[PASS] test_sybil_hundredUnattestedRatingsAllRevert() (gas: 5985630)
+[PASS] test_sybil_residualRisk_compromisedPlatformKeySucceeds() (gas: 1458894)
+[PASS] test_whitewashing_costsAWorkerAboveThePrior() (gas: 2954764)
+[PASS] test_whitewashing_lowRatedWorkerStillGains() (gas: 7274001)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 89.78ms (56.76ms CPU time)
 
 Ran 14 tests for test/RatingRegistry.reverts.t.sol:RatingRegistryRevertsTest
-[PASS] testFuzz_revert_anyScoreOutsideOneToFive(uint8) (runs: 512, μ: 53304, ~: 53313)
+[PASS] testFuzz_revert_anyScoreOutsideOneToFive(uint8) (runs: 512, μ: 53305, ~: 53313)
 [PASS] testFuzz_revert_onlyTheAttestedClientMaySubmit(address) (runs: 512, μ: 54089, ~: 54089)
-[PASS] test_nonceNamespacesAreSeparatePerPlatform() (gas: 446826)
+[PASS] test_nonceNamespacesAreSeparatePerPlatform() (gas: 446814)
 [PASS] test_revert_completionInTheFuture() (gas: 58905)
 [PASS] test_revert_jobAlreadyRated() (gas: 179018)
 [PASS] test_revert_nonceReusedAcrossDifferentJobs() (gas: 218041)
@@ -54,66 +27,29 @@ Ran 14 tests for test/RatingRegistry.reverts.t.sol:RatingRegistryRevertsTest
 [PASS] test_revert_selfRating() (gas: 50845)
 [PASS] test_revert_senderIsNotTheClient() (gas: 50488)
 [PASS] test_revert_signatureOverTamperedFields() (gas: 119875)
-[PASS] test_revert_signerNotOnTheAllowlist() (gas: 69371)
+[PASS] test_revert_signerNotOnTheAllowlist() (gas: 69359)
 [PASS] test_revert_workerNotRegistered() (gas: 56500)
-Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 85.46ms (110.58ms CPU time)
-
-Ran 11 tests for test/PlatformRegistry.t.sol:PlatformRegistryTest
-[PASS] testFuzz_everyRegisteredSignerResolvesToItsId(address,bytes32) (runs: 512, μ: 125975, ~: 126196)
-[PASS] testFuzz_idsAreMonotonicAndDeactivationIsIdScoped(uint8,uint8) (runs: 512, μ: 941802, ~: 673202)
-Logs:
-  Bound result 16
-  Bound result 13
-
-[PASS] test_deactivate_clearsActiveButKeepsIdMapping() (gas: 178646)
-[PASS] test_register_assignsIdsStartingAtOne() (gas: 219460)
-[PASS] test_register_storesPlatformAndEmits() (gas: 152757)
-[PASS] test_revert_deactivateFromNonOwner() (gas: 138397)
-[PASS] test_revert_deactivateUnknownId() (gas: 36482)
-[PASS] test_revert_registerDuplicateSigner() (gas: 141748)
-[PASS] test_revert_registerFromNonOwner() (gas: 39919)
-[PASS] test_revert_registerZeroSigner() (gas: 37158)
-[PASS] test_unknownSignerIsNotActiveAndMapsToZero() (gas: 25586)
-Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 85.39ms (84.67ms CPU time)
-
-Ran 10 tests for test/RatingRegistry.submit.t.sol:RatingRegistrySubmitTest
-[PASS] testFuzz_anyValidScoreIsStoredExactly(uint8,bytes32,bytes32) (runs: 512, μ: 199297, ~: 199327)
-Logs:
-  Bound result 2
-
-[PASS] test_gas_submitRatingRegressionGuard() (gas: 173346)
-Logs:
-  submitRating gas: 150883
-
-[PASS] test_submit_acceptsAZeroContentHashForNoComment() (gas: 161362)
-[PASS] test_submit_acceptsCompletedAtExactlyNow() (gas: 161467)
-[PASS] test_submit_bumpsWorkerStatsAndMovesTheScore() (gas: 196955)
-[PASS] test_submit_emitsTheEvent() (gas: 157324)
-[PASS] test_submit_manyJobsAccumulate() (gas: 755191)
-[PASS] test_submit_marksTheNonceSpent() (gas: 171100)
-[PASS] test_submit_ratingWriteIsAtomicWithFailedStatsUpdate() (gas: 159401)
-[PASS] test_submit_storesTheRating() (gas: 190378)
-Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 85.42ms (86.72ms CPU time)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 89.84ms (117.60ms CPU time)
 
 Ran 12 tests for test/WorkerRegistry.t.sol:WorkerRegistryTest
-[PASS] testFuzz_statsAccumulateExactly(uint8[16]) (runs: 512, μ: 732248, ~: 732192)
+[PASS] testFuzz_statsAccumulateExactly(uint8[16]) (runs: 512, μ: 732233, ~: 732192)
 Logs:
-  Bound result 3
+  Bound result 1
+  Bound result 1
   Bound result 1
   Bound result 5
+  Bound result 1
+  Bound result 1
   Bound result 3
   Bound result 2
   Bound result 1
-  Bound result 1
   Bound result 4
+  Bound result 1
+  Bound result 3
+  Bound result 3
   Bound result 5
-  Bound result 3
-  Bound result 3
-  Bound result 3
-  Bound result 1
   Bound result 4
   Bound result 1
-  Bound result 4
 
 [PASS] test_gas_registerUnderBudget() (gas: 58183)
 Logs:
@@ -129,7 +65,94 @@ Logs:
 [PASS] test_revert_setRatingRegistryToZero() (gas: 27845)
 [PASS] test_revert_setRatingRegistryTwice() (gas: 31844)
 [PASS] test_unregisteredWorkerReadsAsZero() (gas: 26570)
-Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 85.42ms (84.80ms CPU time)
+Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 89.79ms (78.67ms CPU time)
+
+Ran 6 tests for test/Deploy.t.sol:DeployTest
+[PASS] test_deploy_ownerCanRegisterAPlatformImmediately() (gas: 4968771)
+[PASS] test_deploy_ratingSubmissionPathIsLiveEndToEnd() (gas: 5164892)
+[PASS] test_deploy_setsTheDocumentedPriorConstants() (gas: 4870491)
+[PASS] test_deploy_wiresRatingRegistryIntoWorkerRegistry() (gas: 4878908)
+[PASS] test_run_revertsOnUnsupportedChainId() (gas: 3097409)
+[PASS] test_run_writesArtifactWithAllFiveKeysMatchingDeployment() (gas: 4918375)
+Logs:
+  PlatformRegistry 0x34A1D3fff3958843C43aD80F30b94c510645C316
+  WorkerRegistry   0x90193C961A926261B756D1E5bb255e67ff9498A1
+  RatingRegistry   0xA8452Ec99ce0C64f20701dB7dD3abDb607c00496
+  artifact written /Users/adrian/dev/Blockchain_ReputasiKerja/.claude/worktrees/m2-deploy-and-seed/contracts/deployments/anvil.json
+
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 89.77ms (25.32ms CPU time)
+
+Ran 10 tests for test/RatingRegistry.submit.t.sol:RatingRegistrySubmitTest
+[PASS] testFuzz_anyValidScoreIsStoredExactly(uint8,bytes32,bytes32) (runs: 512, μ: 199317, ~: 199327)
+Logs:
+  Bound result 3
+
+[PASS] test_gas_submitRatingRegressionGuard() (gas: 173346)
+Logs:
+  submitRating gas: 150883
+
+[PASS] test_submit_acceptsAZeroContentHashForNoComment() (gas: 161362)
+[PASS] test_submit_acceptsCompletedAtExactlyNow() (gas: 161467)
+[PASS] test_submit_bumpsWorkerStatsAndMovesTheScore() (gas: 196955)
+[PASS] test_submit_emitsTheEvent() (gas: 157324)
+[PASS] test_submit_manyJobsAccumulate() (gas: 755203)
+[PASS] test_submit_marksTheNonceSpent() (gas: 171076)
+[PASS] test_submit_ratingWriteIsAtomicWithFailedStatsUpdate() (gas: 159413)
+[PASS] test_submit_storesTheRating() (gas: 190378)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 89.85ms (82.23ms CPU time)
+
+Ran 9 tests for test/RatingRegistry.scoring.t.sol:RatingRegistryScoringTest
+[PASS] testFuzz_domainSeparatorIsBoundToThisChain(uint64) (runs: 512, μ: 18260, ~: 18260)
+[PASS] testFuzz_oneMoreFiveStarNeverLowersTheScore(uint32) (runs: 512, μ: 19708, ~: 19464)
+Logs:
+  Bound result 16981
+
+[PASS] testFuzz_scoreAlwaysWithinOneToFiveStars(uint32,uint32) (runs: 512, μ: 18391, ~: 18309)
+Logs:
+  Bound result 33333
+  Bound result 138966
+
+[PASS] test_immutablesMatchTheSpec() (gas: 37609)
+[PASS] test_pinnedBasisPoints() (gas: 63656)
+[PASS] test_priorPullsAPerfectRecordDownUntilTheCountIsLarge() (gas: 17257)
+[PASS] test_revert_constructorRejectsBadPriors() (gas: 8661)
+[PASS] test_revert_constructorRejectsZeroRegistries() (gas: 6460)
+[PASS] test_scoreOf_readsWorkerStats() (gas: 129225)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 89.79ms (78.71ms CPU time)
+
+Ran 11 tests for test/PlatformRegistry.t.sol:PlatformRegistryTest
+[PASS] testFuzz_everyRegisteredSignerResolvesToItsId(address,bytes32) (runs: 512, μ: 126025, ~: 126208)
+[PASS] testFuzz_idsAreMonotonicAndDeactivationIsIdScoped(uint8,uint8) (runs: 512, μ: 991533, ~: 795045)
+Logs:
+  Bound result 6
+  Bound result 5
+
+[PASS] test_deactivate_clearsActiveButKeepsIdMapping() (gas: 178646)
+[PASS] test_register_assignsIdsStartingAtOne() (gas: 219460)
+[PASS] test_register_storesPlatformAndEmits() (gas: 152757)
+[PASS] test_revert_deactivateFromNonOwner() (gas: 138397)
+[PASS] test_revert_deactivateUnknownId() (gas: 36482)
+[PASS] test_revert_registerDuplicateSigner() (gas: 141748)
+[PASS] test_revert_registerFromNonOwner() (gas: 39919)
+[PASS] test_revert_registerZeroSigner() (gas: 37158)
+[PASS] test_unknownSignerIsNotActiveAndMapsToZero() (gas: 25586)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 89.83ms (78.75ms CPU time)
+
+╭-------------------------------------------+-----------------+---------+---------+---------+---------╮
+| script/Deploy.s.sol:DeployScript Contract |                 |         |         |         |         |
++=====================================================================================================+
+| Deployment Cost                           | Deployment Size |         |         |         |         |
+|-------------------------------------------+-----------------+---------+---------+---------+---------|
+|                                   3035804 |           13786 |         |         |         |         |
+|-------------------------------------------+-----------------+---------+---------+---------+---------|
+|                                           |                 |         |         |         |         |
+|-------------------------------------------+-----------------+---------+---------+---------+---------|
+| Function Name                             | Min             | Avg     | Median  | Max     | # Calls |
+|-------------------------------------------+-----------------+---------+---------+---------+---------|
+| deploy                                    |         1787927 | 1787927 | 1787927 | 1787927 |       4 |
+|-------------------------------------------+-----------------+---------+---------+---------+---------|
+| run                                       |           21382 |  914619 |  914619 | 1807856 |       2 |
+╰-------------------------------------------+-----------------+---------+---------+---------+---------╯
 
 ╭----------------------------------------------------+-----------------+-------+--------+-------+---------╮
 | src/PlatformRegistry.sol:PlatformRegistry Contract |                 |       |        |       |         |
@@ -144,15 +167,15 @@ Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 85.42ms (84.80ms C
 |----------------------------------------------------+-----------------+-------+--------+-------+---------|
 | deactivatePlatform                                 |           23703 | 29993 |  30033 | 30033 |     262 |
 |----------------------------------------------------+-----------------+-------+--------+-------+---------|
-| isActiveSigner                                     |            2666 |  4780 |   4868 |  4868 |    2650 |
+| isActiveSigner                                     |            2666 |  4783 |   4868 |  4868 |    2751 |
 |----------------------------------------------------+-----------------+-------+--------+-------+---------|
 | platformAt                                         |            5056 |  5056 |   5056 |  5056 |       2 |
 |----------------------------------------------------+-----------------+-------+--------+-------+---------|
 | platformCount                                      |            2340 |  2340 |   2340 |  2340 |     258 |
 |----------------------------------------------------+-----------------+-------+--------+-------+---------|
-| platformIdOf                                       |             539 |  2232 |   2539 |  2539 |    2545 |
+| platformIdOf                                       |             539 |  2243 |   2539 |  2539 |    2645 |
 |----------------------------------------------------+-----------------+-------+--------+-------+---------|
-| registerPlatform                                   |           24351 | 96171 |  96262 | 96478 |    2198 |
+| registerPlatform                                   |           24351 | 96174 |  96262 | 96478 |    2299 |
 ╰----------------------------------------------------+-----------------+-------+--------+-------+---------╯
 
 ╭------------------------------------------------+-----------------+-------+--------+--------+---------╮
@@ -160,21 +183,21 @@ Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 85.42ms (84.80ms C
 +======================================================================================================+
 | Deployment Cost                                | Deployment Size |       |        |        |         |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-|                                              0 |            6770 |       |        |        |         |
+|                                              0 |            6772 |       |        |        |         |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
 |                                                |                 |       |        |        |         |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
 | Function Name                                  | Min             | Avg   | Median | Max    | # Calls |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| PLATFORMS                                      |             270 |   270 |    270 |    270 |       1 |
+| PLATFORMS                                      |             270 |   270 |    270 |    270 |       3 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| PRIOR_SCORE_BPS                                |             216 |   216 |    216 |    216 |       2 |
+| PRIOR_SCORE_BPS                                |             216 |   216 |    216 |    216 |       3 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| PRIOR_WEIGHT                                   |             203 |   203 |    203 |    203 |       2 |
+| PRIOR_WEIGHT                                   |             203 |   203 |    203 |    203 |       3 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| WORKERS                                        |             205 |   205 |    205 |    205 |       1 |
+| WORKERS                                        |             205 |   205 |    205 |    205 |       3 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| attestationDigest                              |            1493 |  1493 |   1493 |   1493 |    1016 |
+| attestationDigest                              |            1493 |  1493 |   1493 |   1493 |    1017 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
 | eip712Domain                                   |            1878 |  1878 |   1878 |   1878 |     257 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
@@ -182,11 +205,11 @@ Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 85.42ms (84.80ms C
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
 | previewScoreBps                                |             970 |   970 |    970 |    970 |     781 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| ratingOf                                       |            7307 |  7307 |   7307 |   7307 |     263 |
+| ratingOf                                       |            7307 |  7307 |   7307 |   7307 |     264 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| scoreOf                                        |            6586 |  6586 |   6586 |   6586 |      15 |
+| scoreOf                                        |            6586 |  6586 |   6586 |   6586 |      16 |
 |------------------------------------------------+-----------------+-------+--------+--------+---------|
-| submitRating                                   |           24588 | 68638 |  27016 | 145190 |    1068 |
+| submitRating                                   |           24588 | 68697 |  27016 | 145190 |    1069 |
 ╰------------------------------------------------+-----------------+-------+--------+--------+---------╯
 
 ╭------------------------------------------------+-----------------+-------+--------+-------+---------╮
@@ -200,16 +223,18 @@ Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 85.42ms (84.80ms C
 |------------------------------------------------+-----------------+-------+--------+-------+---------|
 | Function Name                                  | Min             | Avg   | Median | Max   | # Calls |
 |------------------------------------------------+-----------------+-------+--------+-------+---------|
-| isRegistered                                   |            2607 |  2607 |   2607 |  2607 |     499 |
+| isRegistered                                   |            2607 |  2607 |   2607 |  2607 |     500 |
+|------------------------------------------------+-----------------+-------+--------+-------+---------|
+| ratingRegistry                                 |             423 |   994 |    423 |  2423 |       7 |
 |------------------------------------------------+-----------------+-------+--------+-------+---------|
 | recordRating                                   |           23962 | 30127 |  30131 | 30131 |    4118 |
 |------------------------------------------------+-----------------+-------+--------+-------+---------|
-| register                                       |           23461 | 44949 |  45021 | 45021 |     303 |
+| register                                       |           23461 | 44950 |  45021 | 45021 |     304 |
 |------------------------------------------------+-----------------+-------+--------+-------+---------|
 | setRatingRegistry                              |           21607 | 44093 |  45270 | 45270 |      59 |
 |------------------------------------------------+-----------------+-------+--------+-------+---------|
-| statsOf                                        |            2622 |  2622 |   2622 |  2622 |     541 |
+| statsOf                                        |            2622 |  2622 |   2622 |  2622 |     542 |
 ╰------------------------------------------------+-----------------+-------+--------+-------+---------╯
 
 
-Ran 6 test suites in 188.31ms (490.19ms CPU time): 67 tests passed, 0 failed, 0 skipped (67 total tests)
+Ran 7 test suites in 166.45ms (628.65ms CPU time): 73 tests passed, 0 failed, 0 skipped (73 total tests)

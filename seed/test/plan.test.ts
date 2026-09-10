@@ -98,3 +98,16 @@ test('expectedScoreBps reproduces the contract formula', () => {
 test('a worker with no ratings scores the bare prior', () => {
   assert.equal(expectedScoreBps([], 0), 30_000)
 })
+
+test('the sparse worker scores above the bare prior but well below a proven profile', () => {
+  const plan = buildPlan(TAG)
+  const counts = new Map<number, number>()
+  for (const r of plan.ratings) counts.set(r.workerIndex, (counts.get(r.workerIndex) ?? 0) + 1)
+
+  const sparse = [...counts.entries()].find(([, n]) => n === 2)
+  assert.ok(sparse, 'the plan must contain a 2-rating worker')
+
+  const expected = expectedScoreBps(plan.ratings, sparse[0])
+  assert.ok(expected > 30_000, 'two decent ratings should sit just above the bare prior')
+  assert.ok(expected < 45_000, 'and well below a proven profile')
+})

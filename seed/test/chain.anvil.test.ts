@@ -114,7 +114,7 @@ test('registers all 40 workers, then reports zero on a second pass', async () =>
   for (const w of c.accounts.workers) {
     const isReg = await c.publicClient.readContract({
       address: c.addresses.workerRegistry,
-      abi: (await import('../src/abi.ts')).WORKER_REGISTRY_ABI,
+      abi: WORKER_REGISTRY_ABI,
       functionName: 'isRegistered',
       args: [w.address],
     })

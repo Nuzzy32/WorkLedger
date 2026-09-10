@@ -9,16 +9,22 @@ Runs on Base Sepolia testnet. No token, no real money, no mainnet deployment.
 
 ## Status
 
-This repository currently contains **milestone 1 of 6: the on-chain layer.**
-The contracts are finished and tested. Nothing is deployed yet, and the web
+This repository currently contains **milestones 1 and 2 of 6: the on-chain
+layer, and the deploy and seed pipeline.** The contracts are finished and
+tested, and a single command deploys them to a local chain and populates a
+600-rating demo dataset. Nothing is on a public testnet yet, and the web
 interface described in `docs/` has not been built.
 
 | | |
 |---|---|
 | Contracts | 3, immutable, no proxies, no upgrade path |
-| Test suite | **73 passing** — happy paths, every revert path, fuzz, and 11 attack scenarios |
+| Solidity tests | **73 passing** — happy paths, every revert path, fuzz, and 11 attack scenarios |
+| Seeder tests | **29 passing** with no chain and no database required |
 | Static analysis | Slither: **0 medium or high** findings ([notes](contracts/slither-notes.md)) |
-| Deployed to testnet | Not yet — milestone 2 |
+| Local chain run | 600 ratings submitted; all 40 worker scores match an independently computed expectation |
+| Re-running the seed | Submits 0 and skips 600 — the chain is the checkpoint |
+| Postgres schema | Applied to a live Supabase project **twice in a row**, both clean |
+| Deployed to public testnet | Not yet — needs a funded Base Sepolia key |
 | Web app | Not yet — milestones 3 and 4 |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what ships in which milestone.
@@ -169,14 +175,11 @@ Stated openly, because a design that names its own gaps is easier to trust.
   documented in [`seed/README.md`](seed/README.md) but have not been
   executed — that needs a funded testnet key and an API key this environment
   does not hold.
-- **The Postgres schema has never run against a real database.** No Postgres
-  exists on the machine this was built on. `seed/sql/001_schema.sql` has had
-  three independent readings say it parses and is idempotent; none of those
-  is an actual run against a server.
 - **`writeAll` (the Postgres write path) has no test coverage.** With no local
   Postgres to run against, a test would have to mock the database client, and
   a mock only proves the mock behaves as written — not that real SQL against
-  real Postgres does the same thing.
+  real Postgres does the same thing. The schema itself is verified against a
+  live database (below); this is about the TypeScript write path.
 
 ## Running locally
 

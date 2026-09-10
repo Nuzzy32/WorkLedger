@@ -84,9 +84,16 @@ platforms would need a seed-tag component folded into the nonce.
 
 ## Postgres schema
 
-`sql/001_schema.sql` has never been run against a live Postgres from this
-machine — there is no local Postgres to test it against. Apply it to a
-Supabase project **twice in a row**:
+`sql/001_schema.sql` has been applied to a live Supabase project twice in a
+row, both applies clean. The column grant was then verified against
+`information_schema.column_privileges` on that server: `anon` and
+`authenticated` each read eight columns of `ratings` and cannot see `client`,
+while `service_role` reads all nine, which is what lets the seeder write.
+Supabase's own security advisor reports one INFO notice — `sync_state` has RLS
+enabled with no policy — and that is deliberate: it is indexer bookkeeping, so
+denying every client-reachable role is the intent.
+
+To apply it to your own project, run it **twice in a row**:
 
 ```bash
 psql "$DATABASE_URL" -f sql/001_schema.sql

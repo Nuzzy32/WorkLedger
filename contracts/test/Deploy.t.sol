@@ -65,6 +65,14 @@ contract DeployTest is Test {
         assertEq(ratings.scoreOf(worker), 33_333, "one 5-star reads as unproven, not perfect");
     }
 
+    function test_run_revertsOnUnsupportedChainId() public {
+        DeployScript script = new DeployScript();
+
+        vm.chainId(1);
+        vm.expectRevert(abi.encodeWithSelector(DeployScript.UnsupportedChain.selector, uint256(1)));
+        script.run();
+    }
+
     function test_run_writesArtifactWithAllFiveKeysMatchingDeployment() public {
         DeployScript script = new DeployScript();
 

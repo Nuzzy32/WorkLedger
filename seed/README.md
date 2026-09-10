@@ -54,6 +54,10 @@ deployer (index 0) — never the anvil default — and run the deploy script
 against that RPC URL before running `npm run seed`. `loadConfig` accepts only
 `31337` and `84532`; anything else, mainnet or not, is rejected.
 
+The deployer needs roughly **0.12 ETH**: 60 accounts (40 workers, 20 clients)
+at a 0.002 ETH float each, plus its own gas for the deploy and for topping
+those accounts up.
+
 ## Re-running is safe
 
 Every setup and submission step checks on-chain state before writing:

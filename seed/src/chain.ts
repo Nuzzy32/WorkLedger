@@ -5,6 +5,7 @@ import {
   createTestClient,
   http,
   parseEther,
+  formatEther,
   zeroAddress,
   keccak256,
   stringToBytes,
@@ -23,11 +24,9 @@ import { signAttestation, type Attestation } from './attest.ts'
 
 const ANVIL_CHAIN_ID = 31337
 
-/** Minimum balance an account needs before it can transact. */
-const FUND_TARGET = parseEther('0.05')
-
 export interface Deployment {
   chainId: number
+  block: bigint
   platformRegistry: Address
   workerRegistry: Address
   ratingRegistry: Address
@@ -51,7 +50,10 @@ function chainFileName(chainId: number): string {
 export function loadDeployment(chainId: number): Deployment {
   const url = new URL(`../../contracts/deployments/${chainFileName(chainId)}.json`, import.meta.url)
   try {
-    return JSON.parse(readFileSync(url, 'utf8')) as Deployment
+    // vm.serializeUint writes "block" as a JSON number, not a string, so it
+    // needs an explicit bigint conversion after parsing.
+    const raw = JSON.parse(readFileSync(url, 'utf8')) as Omit<Deployment, 'block'> & { block: number }
+    return { ...raw, block: BigInt(raw.block) }
   } catch {
     throw new Error(
       `No deployment for chain ${chainId}. Run the deploy script first:\n` +
@@ -140,18 +142,56 @@ export async function ensurePlatforms(ctx: ChainCtx, plan: SeedPlan): Promise<nu
 }
 
 /**
+ * Per-account gas float.
+ *
+ * The busiest client sends roughly 45 `submitRating` transactions at about
+ * 200k gas each; the whole 600-rating run costs well under 0.02 ETH on Base
+ * Sepolia. anvil keeps a fat float because `anvil_setBalance` is free there
+ * and anvil's default base fee opens at 1 gwei.
+ */
+function fundTargetFor(chainId: number): bigint {
+  return chainId === ANVIL_CHAIN_ID ? parseEther('0.05') : parseEther('0.002')
+}
+
+/**
  * Give every worker and client enough balance to transact.
  *
  * On anvil, accounts derived from the project mnemonic start empty — anvil funds
  * only the first ten accounts of its own mnemonic, and our workers sit at
  * indices 100-139. `anvil_setBalance` avoids 60 funding transactions locally.
  *
+ * Off anvil, funding is real transfers that can run out partway through, so
+ * the total shortfall is checked against the deployer's balance up front —
+ * failing once with both numbers rather than dying mid-run on an opaque
+ * insufficient-funds error, leaving a half-funded account set.
+ *
  * @returns how many addresses were topped up
  */
 export async function ensureFunded(ctx: ChainCtx, accounts: Accounts): Promise<number> {
   const needFunding = [...accounts.workers, ...accounts.clients]
   const isAnvil = ctx.config.chainId === ANVIL_CHAIN_ID
-  let topped = 0
+  const fundTarget = fundTargetFor(ctx.config.chainId)
+
+  const withBalances: { account: HDAccount; balance: bigint }[] = []
+  for (const account of needFunding) {
+    withBalances.push({ account, balance: await ctx.publicClient.getBalance({ address: account.address }) })
+  }
+
+  if (!isAnvil) {
+    // anvil_setBalance cannot fail this way, so the precheck only matters off anvil.
+    const shortfall = withBalances.reduce(
+      (sum, { balance }) => (balance < fundTarget ? sum + (fundTarget - balance) : sum),
+      0n,
+    )
+    const deployerBalance = await ctx.publicClient.getBalance({ address: accounts.deployer.address })
+    if (deployerBalance < shortfall) {
+      throw new Error(
+        `deployer ${accounts.deployer.address} holds ${formatEther(deployerBalance)} ETH but needs ` +
+          `at least ${formatEther(shortfall)} ETH to fund ${needFunding.length} accounts to ` +
+          `${formatEther(fundTarget)} ETH each.`,
+      )
+    }
+  }
 
   const testClient = isAnvil
     ? createTestClient({
@@ -162,17 +202,17 @@ export async function ensureFunded(ctx: ChainCtx, accounts: Accounts): Promise<n
     : undefined
 
   const deployer = ctx.walletClientFor(accounts.deployer)
+  let topped = 0
 
-  for (const account of needFunding) {
-    const balance = await ctx.publicClient.getBalance({ address: account.address })
-    if (balance >= FUND_TARGET) continue
+  for (const { account, balance } of withBalances) {
+    if (balance >= fundTarget) continue
 
     if (testClient) {
-      await testClient.setBalance({ address: account.address, value: FUND_TARGET })
+      await testClient.setBalance({ address: account.address, value: fundTarget })
     } else {
       const hash = await deployer.sendTransaction({
         to: account.address,
-        value: FUND_TARGET - balance,
+        value: fundTarget - balance,
         chain: resolveChain(ctx.config.chainId),
         account: accounts.deployer,
       })
@@ -245,10 +285,15 @@ export async function submitRatings(
   // A resumed run can skip up to 600 ratings, and public Base Sepolia RPCs
   // cap eth_getLogs block ranges — 600 full-range requests would be throttled
   // or rejected there. Indexing once turns 600 requests into 1.
+  //
+  // fromBlock starts at the deployment block, not 0: the registry cannot have
+  // emitted a log before the block it was deployed in, so scanning earlier is
+  // both wasteful and, on a public RPC that caps the block range rather than
+  // the request count, fatal — Base Sepolia is tens of millions of blocks in.
   const submittedLogs = await ctx.publicClient.getLogs({
     address: ctx.addresses.ratingRegistry,
     event: RATING_SUBMITTED_EVENT,
-    fromBlock: 0n,
+    fromBlock: ctx.addresses.block,
     toBlock: 'latest',
   })
   const knownTxHashes = new Map<Hex, Hex>()

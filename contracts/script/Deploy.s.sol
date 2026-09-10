@@ -21,6 +21,10 @@ contract DeployScript is Script {
 
     error WiringFailed(address expected, address actual);
 
+    /// @notice Thrown when the target chain is not an allowlisted testnet.
+    /// @param chainId The rejected chain id.
+    error UnsupportedChain(uint256 chainId);
+
     /// @notice Deploy and wire all three registries.
     /// @param owner Address that will own the platform allowlist.
     /// @return platforms The deployed PlatformRegistry.
@@ -43,7 +47,13 @@ contract DeployScript is Script {
     }
 
     /// @notice Entry point for `forge script`. Broadcasts and writes the artifact.
+    /// @dev Only chain ids 31337 (anvil) and 84532 (Base Sepolia) are allowlisted;
+    ///      this project is testnet-only per CLAUDE.md rule 2.
     function run() external {
+        if (block.chainid != 31337 && block.chainid != 84532) {
+            revert UnsupportedChain(block.chainid);
+        }
+
         address owner = msg.sender;
 
         vm.startBroadcast();

@@ -180,6 +180,13 @@ Stated openly, because a design that names its own gaps is easier to trust.
   a mock only proves the mock behaves as written — not that real SQL against
   real Postgres does the same thing. The schema itself is verified against a
   live database (below); this is about the TypeScript write path.
+- **The verification page currently serves anvil data.** Base Sepolia is
+  deferred until the wallet holds testnet ETH, so the transaction hashes in a
+  seeded profile point at a local chain. The page hides the block explorer link
+  on chain id 31337 rather than linking somewhere dead, and it is not deployed
+  publicly while this holds. The anvil rows are removed from Postgres before
+  the real Base Sepolia run rather than stacked under it: the chain seed is
+  idempotent, the database is not the place to hold two histories.
 
 ## Running locally
 
@@ -226,7 +233,23 @@ idempotent and reports `ratings submitted 0, already present 600` on a second
 pass. See [`seed/README.md`](seed/README.md) for the Base Sepolia path and the
 Basescan verification commands.
 
-There is no `web/` directory yet — the frontend is milestone 3.
+### Running the verification page
+
+```bash
+cd web
+cp .env.example .env.local   # fill SUPABASE_URL and SUPABASE_ANON_KEY
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000/w/<worker address>`. The page needs no wallet, no
+sign-in, and no JavaScript to display its content: it is a server component
+that reads the chain and the cache in parallel.
+
+The publishable anon key is the only credential it holds. `seed/sql/001_schema.sql`
+enables row level security with public read policies and revokes
+`ratings.client` at column level, so the page reads exactly what a verifier is
+meant to see.
 
 ## Repository layout
 
@@ -238,6 +261,11 @@ seed/
   src/         Derives accounts, builds the demo dataset, submits it on chain
   test/        Offline plan/account/db tests plus anvil-only chain tests
   sql/         The Postgres schema the seed writes into
+web/
+  app/         Next.js App Router; app/w/[address] is the verification page
+  components/  ScoreBadge, RatingDistribution, PlatformChip, AddressDisplay, and the rest
+  lib/         Chain reads, Supabase reads, address validation, scoring
+  test/        Unit tests plus anvil-only chain tests
 docs/          Specs, threat model, and the decision log
 ```
 

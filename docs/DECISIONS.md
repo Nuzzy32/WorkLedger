@@ -397,6 +397,87 @@ the two documented directories.
 
 **Cost.** None.
 
+## O. `web/` reads Postgres with the publishable anon key, not a connection string
+
+`seed/` connects with `postgres.js` and a `DATABASE_URL`, so the obvious move
+was to reuse it. The schema makes that the wrong call:
+`seed/sql/001_schema.sql` enables row level security on all four tables, adds
+`for select using (true)` policies to `platforms`, `workers`, and `ratings`,
+revokes `select` on `ratings.client` from both `anon` and `authenticated`, and
+leaves `sync_state` with neither policy nor grant.
+
+That is a read model written for exactly one consumer: an unauthenticated
+public page. Reading it with `@supabase/supabase-js` and the publishable key
+means the column grant actually constrains the application — the page cannot
+read `ratings.client` even by accident — and no database password has to reach
+a deploy target.
+
+**Resolution.** `web/lib/db.ts` uses `@supabase/supabase-js` with
+`SUPABASE_ANON_KEY`. `web/lib/env.ts` rejects a value that starts with
+`postgres`, so a connection string pasted into that variable fails loudly at
+startup instead of quietly granting the app more reach than it should have.
+
+**Cost.** One more dependency in `web/`, and two `as` casts where supabase-js
+returns `unknown`-shaped rows.
+
+## P. Every score display is gated on `isRegistered`
+
+`RatingRegistry.scoreOf()` runs `previewScoreBps()` over whatever
+`WorkerRegistry.statsOf()` returns, and `statsOf` answers with zeros for an
+address it has never seen rather than reverting. The formula's prior then
+dominates: with `PRIOR_SCORE_BPS = 30_000` and `PRIOR_WEIGHT = 5` from the
+deploy script, an address that has never registered reads back as a confident
+`3.00`.
+
+Rendering that would be the worst kind of wrong — a made-up score on a page
+whose entire purpose is checking whether a history is real.
+
+**Resolution.** `selectState()` in `web/lib/score.ts` decides `not-found`
+before any score is formatted, and `VerificationResult` renders no score in the
+`not-found` and `empty` states. Two tests pin it: an anvil test asserting
+`scoreOf` returns 30000 for an unregistered address, and a component test
+asserting `3.00` never appears in the not-found hero.
+
+**Cost.** None. The gate is one branch.
+
+## Q. `formatScore` rounds, matching `bpsToDecimal`, rather than truncating
+
+The plan originally had `formatScore` truncate with `Math.trunc` while
+claiming in its own comment to match `bpsToDecimal` in `seed/src/db.ts`. That
+claim was false: `bpsToDecimal` rounds to the nearest cent with `Math.round`
+(see `seed/src/db.ts` and entry K). The two disagreed on 43299 basis
+points — `4.32` against `4.33`. This matters because `workers.cached_score` is
+written by `bpsToDecimal` and the page displays that cached value in its
+partial state while showing the live chain value everywhere else: one path
+truncating and the other rounding lets the same worker read `4.32` in one
+panel and `4.33` in another.
+
+**Resolution.** `web/lib/score.ts`'s `formatScore` now uses `bpsToDecimal`'s
+exact algorithm — round to whole cents, then format from integers — so the
+two can never disagree, and the float `.toFixed(2)` that entry K exists to
+warn against is gone. A test pins `44250 -> "4.43"`, the value entry K swept
+for.
+
+**Cost.** The display can round up by half a cent; the alternative was a 0.01
+disagreement between two panels of one page.
+
+## R. `notFound()` on `/w/[address]` returns HTTP 200, not 404
+
+The route segment has a `loading.tsx`, so Next streams the shell and commits
+the response status before `notFound()` resolves. This reproduces under
+`next start`, not only in development. Removing `loading.tsx` is the only way
+to recover the 404, and rendering the not-found state inline instead of
+calling `notFound()` would still return 200 — no configuration buys both.
+
+**Resolution.** Keep the skeletons and accept the 200. `docs/DESIGN-SYSTEM.md`
+requires all four states and names skeletons matching the final layout as the
+loading one; trading a state a person sees for a status code only a crawler
+reads is the wrong way round for the screen this project exists to show. The
+rendered page is correct either way.
+
+**Cost.** An unknown profile answers 200, so a crawler or link checker reads
+it as a live page.
+
 ## Note: renaming the project redeploys `RatingRegistry`
 
 The EIP-712 domain name is the literal string `"WorkLedger"`

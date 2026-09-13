@@ -420,7 +420,7 @@ startup instead of quietly granting the app more reach than it should have.
 **Cost.** One more dependency in `web/`, and two `as` casts where supabase-js
 returns `unknown`-shaped rows.
 
-## P. Every score display is gated on `isRegistered`
+## P. The prior baseline is gated on the rating count, not on `isRegistered`
 
 `RatingRegistry.scoreOf()` runs `previewScoreBps()` over whatever
 `WorkerRegistry.statsOf()` returns, and `statsOf` answers with zeros for an
@@ -432,11 +432,26 @@ deploy script, an address that has never registered reads back as a confident
 Rendering that would be the worst kind of wrong — a made-up score on a page
 whose entire purpose is checking whether a history is real.
 
-**Resolution.** `selectState()` in `web/lib/score.ts` decides `not-found`
-before any score is formatted, and `VerificationResult` renders no score in the
-`not-found` and `empty` states. Two tests pin it: an anvil test asserting
-`scoreOf` returns 30000 for an unregistered address, and a component test
-asserting `3.00` never appears in the not-found hero.
+**Resolution.** `selectState()` in `web/lib/score.ts` decides the state before
+any score is formatted, and `VerificationResult` renders no score in the
+`not-found` and `empty` states.
+
+Name the gate correctly, because the obvious guess is wrong. `isRegistered`
+alone does not stop the baseline: the branch reads
+`registered || hasWorkerRow`, so a worker who has a Postgres row but is not
+registered on chain still reaches the scored states. What actually stops the
+baseline is the row below it — `ratingCount === 0` returns `empty`, and an
+address the registry never saw has a rating count of zero. The baseline is a
+prior with no ratings behind it, and a page with no ratings shows no score.
+
+Anyone editing `selectState` should read that order as load-bearing: moving or
+weakening the `ratingCount === 0` row puts `3.00` back on a stranger's page,
+whatever the `isRegistered` branch says.
+
+Three tests pin it: an anvil test asserting `scoreOf` returns 30000 for an
+unregistered address, a unit test asserting a zero rating count is `empty`
+rather than `unproven`, and a component test asserting `3.00` never appears in
+the not-found hero.
 
 **Cost.** None. The gate is one branch.
 

@@ -14,11 +14,15 @@ on-chain layer, the deploy and seed pipeline, and the public verification
 page.** The contracts are finished and tested, a single command deploys them
 to a local chain and populates a 600-rating demo dataset, and the
 verification page at `/w/[address]` is built and has been checked against
-that seeded data from a production build — the verified profile, the
-unproven profile, the not-found route, and the partial states when the chain
-or the database is unreachable all render as designed. Nothing is on a public
-testnet yet, so every profile the page shows today points at the local anvil
-chain, not Base Sepolia.
+that seeded data from a production build: the verified profile, the unproven
+profile, and the not-found route render as designed, and each outage degrades
+on its own terms. An unreachable chain falls back to the last score saved in
+Postgres and labels it as the last known value, or says plainly that there is
+no score to show when none was ever saved. An unreachable database leaves the
+chain's score standing and puts an error in place of the rating spread and the
+list, rather than rendering them empty as if the worker had never been rated.
+Nothing is on a public testnet yet, so every profile the page shows today
+points at the local anvil chain, not Base Sepolia.
 
 | | |
 |---|---|

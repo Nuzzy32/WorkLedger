@@ -67,9 +67,10 @@ export function selectState(signals: ProfileSignals): ProfileVerdict {
   if (!signals.addressValid) return notFound
 
   if (signals.chainRead === 'failed') {
-    return signals.hasWorkerRow
-      ? { state: 'partial', neutralRing: signals.hasDeactivatedIssuer }
-      : notFound
+    // neutralRing is false on purpose: a chain read that failed told us nothing
+    // about any issuer, so the partial state carries no deactivation claim.
+    // ScoreBadge draws the partial state neutral anyway, by its own label.
+    return signals.hasWorkerRow ? { state: 'partial', neutralRing: false } : notFound
   }
 
   if (!signals.registered && !signals.hasWorkerRow) return notFound

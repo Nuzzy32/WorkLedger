@@ -72,6 +72,19 @@ test('treats a platform absent from the chain map as inactive', () => {
   assert.equal(view.hasDeactivatedIssuer, true)
 })
 
+test('reports an unread platform status as unknown, not as deactivated', () => {
+  // null is the chain not being read at all. The empty-Map case above is a
+  // read that answered, and those two must not render the same.
+  const view = toProfileView(worker, ratings, null)
+
+  assert.deepEqual(
+    view.platforms.map((platform) => platform.active),
+    [null, null, null],
+  )
+  assert.equal(view.hasDeactivatedIssuer, false)
+  assert.equal(view.ratings[0]?.platformActive, null)
+})
+
 test('survives a missing worker row', () => {
   const view = toProfileView(null, ratings, new Map([[1, true], [2, true], [3, true]]))
 

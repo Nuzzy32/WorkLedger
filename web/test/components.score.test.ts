@@ -40,6 +40,49 @@ test('a deactivated issuer replaces the label with a footnote', () => {
   assert.match(html, /no longer issues ratings/)
 })
 
+test('the partial badge reports a last known value, not a verdict', () => {
+  const html = renderToStaticMarkup(
+    ScoreBadge({ scoreBps: 37600, ratingCount: 16, state: 'partial', neutralRing: false }),
+  )
+
+  // Verified and unproven are judgements about a history the page could not
+  // read. It may only say what it has: the value it saved last time.
+  assert.match(html, /Last known/)
+  assert.equal(html.includes('Verified'), false)
+  assert.equal(html.includes('Unproven'), false)
+  assert.match(html, /aria-label="Last known"/)
+  assert.match(html, /border-\[var\(--color-border\)\]/)
+})
+
+test('a small sample is still called small under a deactivated issuer', () => {
+  const html = renderToStaticMarkup(
+    ScoreBadge({ scoreBps: 50000, ratingCount: 4, state: 'unproven', neutralRing: true }),
+  )
+
+  // Two different questions: who issued these, and how many are there.
+  assert.match(html, /no longer issues ratings/)
+  assert.match(html, /Too small a sample/)
+})
+
+test('a partial hero with no cached score shows no score anywhere', () => {
+  const html = renderToStaticMarkup(
+    VerificationResult({
+      state: 'partial',
+      neutralRing: false,
+      scoreBps: null,
+      ratingCount: 0,
+      displayName: 'Rani Wibowo',
+      headline: null,
+      cachedAt: '2026-09-11T02:00:00.000Z',
+    }),
+  )
+
+  // workers.cached_score is nullable. A 0.00 would read as an accusation.
+  assert.equal(/\d\.\d\d/.test(html), false)
+  assert.match(html, /No score to show/)
+  assert.match(html, /Showing the last known value/)
+})
+
 test('the not-found hero shows no score at all', () => {
   const html = renderToStaticMarkup(
     VerificationResult({

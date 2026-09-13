@@ -36,7 +36,8 @@ export interface RatingView {
   jobTitle: string | null
   platformId: number
   platformName: string | null
-  platformActive: boolean
+  /** null when the chain was not read, so the status is unknown. */
+  platformActive: boolean | null
   submittedAt: string
   txHash: string
 }
@@ -44,7 +45,8 @@ export interface RatingView {
 export interface PlatformView {
   id: number
   name: string | null
-  active: boolean
+  /** null when the chain was not read, so the status is unknown. */
+  active: boolean | null
 }
 
 export interface ProfileView {
@@ -60,6 +62,18 @@ export interface ProfileView {
   hasDeactivatedIssuer: boolean
 }
 
+/**
+ * The chain's answer for one platform: true, false, or null for not read.
+ *
+ * An id missing from a map the chain did answer is inactive — the registry
+ * returned no active record for it. An absent map is a different thing: no
+ * answer at all.
+ */
+function platformStatus(activity: Map<number, boolean> | null, id: number): boolean | null {
+  if (activity === null) return null
+  return activity.get(id) ?? false
+}
+
 function platformName(embedded: EmbeddedPlatform): string | null {
   if (embedded === null) return null
   if (Array.isArray(embedded)) return embedded[0]?.name ?? null
@@ -73,11 +87,15 @@ function platformName(embedded: EmbeddedPlatform): string | null {
  * The distribution counts every row, while the list is capped: an average
  * hides shape, and a ten-row sample of a forty-rating history would hide it
  * again.
+ *
+ * `platformActivity` is null when the chain was not read at all. That is not
+ * the same as a read that came back empty, so it produces an unknown status
+ * rather than an inactive one: the page may only say what it actually read.
  */
 export function toProfileView(
   workerRow: WorkerRow | null,
   ratingRows: readonly RatingRow[],
-  platformActivity: Map<number, boolean>,
+  platformActivity: Map<number, boolean> | null,
 ): ProfileView {
   const ratings: RatingView[] = ratingRows.slice(0, RECENT_RATING_LIMIT).map((row) => ({
     jobId: row.job_id,
@@ -86,7 +104,7 @@ export function toProfileView(
     jobTitle: row.job_title,
     platformId: row.platform_id,
     platformName: platformName(row.platforms),
-    platformActive: platformActivity.get(row.platform_id) ?? false,
+    platformActive: platformStatus(platformActivity, row.platform_id),
     submittedAt: row.submitted_at,
     txHash: row.tx_hash,
   }))
@@ -97,9 +115,7 @@ export function toProfileView(
     platforms.push({
       id: row.platform_id,
       name: platformName(row.platforms),
-      // An id the chain did not return is treated as inactive. Claiming an
-      // unknown issuer is active would be the wrong way to be wrong.
-      active: platformActivity.get(row.platform_id) ?? false,
+      active: platformStatus(platformActivity, row.platform_id),
     })
   }
   platforms.sort((left, right) => left.id - right.id)
@@ -114,7 +130,9 @@ export function toProfileView(
     cachedScore: cachedScore === null || cachedScore === undefined ? null : String(cachedScore),
     cachedCount: workerRow?.cached_count ?? null,
     cachedAt: workerRow?.cached_at ?? null,
-    hasDeactivatedIssuer: platforms.some((platform) => !platform.active),
+    // Only a platform the chain said was inactive counts. An unknown status is
+    // not a deactivation claim.
+    hasDeactivatedIssuer: platforms.some((platform) => platform.active === false),
   }
 }
 
@@ -143,6 +161,17 @@ export async function fetchWorkerRow(
   return data as WorkerRow | null
 }
 
+/**
+ * Every rating row for the worker, newest first. No `.limit()` on purpose: the
+ * distribution counts the whole history, and a capped fetch would draw a
+ * spread that disagrees with the rating count above it.
+ *
+ * The ceiling is PostgREST's `db-max-rows` (1000 on Supabase by default). A
+ * worker past it would get a silently truncated distribution. Unreachable at
+ * the seeded scale — 600 ratings across 40 workers — and the upgrade path when
+ * it is not is to count the buckets in Postgres (a view or an rpc returning
+ * five totals) rather than to page thousands of rows into this process.
+ */
 export async function fetchRatingRows(
   client: SupabaseClient,
   queryKey: string,

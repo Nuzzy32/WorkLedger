@@ -51,7 +51,9 @@ export function AddressDisplay({
       {explorerUrl === null ? null : (
         <a
           href={explorerUrl}
-          className="min-h-11 text-[13px] leading-5 text-[var(--color-accent)] underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          // inline-flex, because min-height does nothing to an inline box and
+          // docs/DESIGN-SYSTEM.md asks for 44px on a phone.
+          className="inline-flex min-h-11 items-center text-[13px] leading-5 text-[var(--color-accent)] underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           View the record
         </a>

@@ -40,6 +40,8 @@ export const platformRegistryAbi = parseAbi([
 
 export interface Deployment {
   chainId: number
+  /** Unread by this app. Kept because parseDeployment uses it to check it was
+   * handed a real deploy artefact, and because a log reader will want it. */
   block: number
   platformRegistry: Address
   ratingRegistry: Address
@@ -116,8 +118,6 @@ export function createChainClient(chainId: number, rpcUrl: string): PublicClient
 
 export interface WorkerChainState {
   registered: boolean
-  /** Unix seconds. 0 when unregistered. */
-  registeredAt: number
   ratingCount: number
   /** Basis points. Carries the prior baseline even when unregistered. */
   scoreBps: number
@@ -149,11 +149,11 @@ export async function readWorkerChainState(
     }),
   ])
 
-  const [registeredAt, ratingCount] = stats
+  // statsOf also returns registeredAt and scoreSum; this page renders neither.
+  const [, ratingCount] = stats
 
   return {
     registered,
-    registeredAt: Number(registeredAt),
     ratingCount: Number(ratingCount),
     scoreBps: Number(scoreBps),
   }

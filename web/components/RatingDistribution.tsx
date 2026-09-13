@@ -7,8 +7,33 @@ import type { Distribution } from '../lib/score.ts'
  * the difference is what a client needs to see. Bars scale against the largest
  * bucket so the shape stays readable when one score dominates.
  */
-export function RatingDistribution({ distribution }: { distribution: Distribution }) {
+export function RatingDistribution({
+  distribution,
+  databaseError = false,
+}: {
+  distribution: Distribution
+  /** The rating read failed. Rows are missing, not absent. */
+  databaseError?: boolean
+}) {
   const total = distribution.reduce((sum, count) => sum + count, 0)
+
+  if (databaseError) {
+    return (
+      <section className="rounded-lg border border-[var(--color-border)] bg-surface p-4 md:p-6">
+        <h2 className="text-lg font-semibold leading-7">Rating spread</h2>
+        <p className="mt-4 flex items-center gap-2 text-[var(--color-caution)]">
+          <span aria-label="Could not be loaded" role="img">
+            !
+          </span>
+          The spread could not be loaded just now.
+        </p>
+        <p className="mt-1 max-w-prose text-[var(--color-fg-muted)]">
+          This says nothing about the worker. The score above is the chain&rsquo;s
+          answer and stands on its own.
+        </p>
+      </section>
+    )
+  }
 
   if (total === 0) {
     return (

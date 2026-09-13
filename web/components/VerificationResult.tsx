@@ -10,7 +10,8 @@ function formatCachedAt(iso: string): string {
 interface VerificationResultProps {
   state: ProfileState
   neutralRing: boolean
-  scoreBps: number
+  /** null when nothing was read and nothing was cached. Never formatted. */
+  scoreBps: number | null
   ratingCount: number
   displayName: string | null
   headline: string | null
@@ -64,6 +65,14 @@ export function VerificationResult({
             </span>
             No ratings yet. Ratings appear here once a platform confirms a finished
             job and the client rates it.
+          </p>
+        ) : scoreBps === null ? (
+          <p className="flex items-center gap-2 text-[15px]">
+            <span aria-label="No score available" role="img">
+              —
+            </span>
+            No score to show. The chain could not be reached and no score was saved
+            here before now.
           </p>
         ) : (
           <ScoreBadge

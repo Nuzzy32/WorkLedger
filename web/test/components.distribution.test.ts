@@ -36,3 +36,15 @@ test('renders an explanation instead of five empty bars', () => {
   assert.match(html, /No ratings to show/)
   assert.equal(html.includes('data-score='), false)
 })
+
+test('says the spread failed to load rather than showing it as empty', () => {
+  const html = renderToStaticMarkup(
+    RatingDistribution({ distribution: [0, 0, 0, 0, 0], databaseError: true }),
+  )
+
+  // A failed read and a worker with no ratings must not render alike.
+  assert.match(html, /could not be loaded/)
+  assert.match(html, /says nothing about the worker/)
+  assert.equal(html.includes('No ratings to show'), false)
+  assert.equal(html.includes('data-score='), false)
+})

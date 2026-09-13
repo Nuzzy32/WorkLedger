@@ -54,15 +54,21 @@ export default async function WorkerProfilePage({
   const workerRow: WorkerRow | null =
     workerResult.status === 'fulfilled' ? workerResult.value : null
   const ratingRows: RatingRow[] = ratingsResult.status === 'fulfilled' ? ratingsResult.value : []
+  // The read that backs the distribution and the list. A rejection here is a
+  // database outage, which must not look like a worker with no ratings.
+  const databaseError = ratingsResult.status === 'rejected'
 
   // Second round: the platform ids only become known once the ratings arrive.
   const platformIds = [...new Set(ratingRows.map((row) => row.platform_id))]
-  const platformActivity =
-    platformIds.length === 0 || chainState === null
-      ? new Map<number, boolean>()
-      : await readPlatformActivity(chainClient, deployment, platformIds).catch(
-          () => new Map<number, boolean>(),
-        )
+  // null means the chain was not read. An empty map means it was read and had
+  // nothing to say. The page may only report what it read, so the two cannot
+  // collapse into one value.
+  const platformActivity: Map<number, boolean> | null =
+    chainState === null
+      ? null
+      : platformIds.length === 0
+        ? new Map<number, boolean>()
+        : await readPlatformActivity(chainClient, deployment, platformIds).catch(() => null)
 
   const profile = toProfileView(workerRow, ratingRows, platformActivity)
 
@@ -77,8 +83,11 @@ export default async function WorkerProfilePage({
 
   if (verdict.state === 'not-found') notFound()
 
+  // workers.cached_score is nullable, and a row written before its first score
+  // sync has none. Null stays null all the way to the hero: a 0.00 would read
+  // as a score this worker earned.
   const cachedScoreBps =
-    profile.cachedScore === null ? 0 : Math.round(Number(profile.cachedScore) * 10000)
+    profile.cachedScore === null ? null : Math.round(Number(profile.cachedScore) * 10000)
   const scoreBps = chainState === null ? cachedScoreBps : chainState.scoreBps
   const ratingCount = chainState?.ratingCount ?? profile.cachedCount ?? 0
 
@@ -108,11 +117,12 @@ export default async function WorkerProfilePage({
         )}
       </div>
 
-      <RatingDistribution distribution={profile.distribution} />
+      <RatingDistribution distribution={profile.distribution} databaseError={databaseError} />
 
       <RatingList
         ratings={profile.ratings}
         totalCount={ratingCount}
+        databaseError={databaseError}
         explorerTxUrl={(txHash) => explorerTxUrl(env.chainId, txHash)}
       />
 

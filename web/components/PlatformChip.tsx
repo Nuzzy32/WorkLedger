@@ -12,14 +12,16 @@ export function PlatformChip({ platform }: { platform: PlatformView }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-surface px-3 py-2 text-[13px] leading-5">
       <span className="font-semibold">{name}</span>
-      {platform.active ? null : (
+      {/* Only a known-inactive platform gets the treatment. `null` is an
+          unread status, and an unread status is not a claim about anyone. */}
+      {platform.active === false ? (
         <span className="flex items-center gap-1 text-[var(--color-danger)]">
           <span aria-label="Deactivated" role="img">
             ×
           </span>
           No longer issuing
         </span>
-      )}
+      ) : null}
     </span>
   )
 }

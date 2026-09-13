@@ -73,6 +73,16 @@ test('a failed chain read falls back to the cached row as partial', () => {
   })
 })
 
+test('a partial state never carries a deactivation ring', () => {
+  // The ring means "one issuer stopped". A chain read that failed read no
+  // issuer at all, so the claim has nothing behind it even if a caller passes
+  // the flag. toProfileView cannot produce it either: see db.test.ts.
+  assert.deepEqual(selectState({ ...healthy, chainRead: 'failed', hasDeactivatedIssuer: true }), {
+    state: 'partial',
+    neutralRing: false,
+  })
+})
+
 test('a failed chain read with no cached row is not found', () => {
   assert.deepEqual(selectState({ ...healthy, chainRead: 'failed', hasWorkerRow: false }), {
     state: 'not-found',

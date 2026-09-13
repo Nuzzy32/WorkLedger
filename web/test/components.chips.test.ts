@@ -23,6 +23,16 @@ test('an inactive platform says so in words, not only in colour', () => {
   assert.match(html, /No longer issuing/)
 })
 
+test('a platform whose status was never read makes no claim about it', () => {
+  const html = renderToStaticMarkup(
+    createElement(PlatformChip, { platform: { id: 3, name: 'PayHive', active: null } }),
+  )
+
+  assert.match(html, /PayHive/)
+  assert.equal(html.includes('No longer issuing'), false)
+  assert.equal(html.includes('color-danger'), false)
+})
+
 test('a platform with no cached name falls back to its id', () => {
   const html = renderToStaticMarkup(
     createElement(PlatformChip, { platform: { id: 7, name: null, active: true } }),

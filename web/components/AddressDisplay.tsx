@@ -14,13 +14,24 @@ export function AddressDisplay({
   address: string
   explorerUrl: string | null
 }) {
-  const [copied, setCopied] = useState(false)
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const short = `${address.slice(0, 8)}…${address.slice(-5)}`
 
   async function copy() {
-    await navigator.clipboard.writeText(address)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
+    try {
+      if (!navigator?.clipboard?.writeText) {
+        setState('failed')
+        window.setTimeout(() => setState('idle'), 1500)
+        return
+      }
+
+      await navigator.clipboard.writeText(address)
+      setState('copied')
+      window.setTimeout(() => setState('idle'), 1500)
+    } catch {
+      setState('failed')
+      window.setTimeout(() => setState('idle'), 1500)
+    }
   }
 
   return (
@@ -35,7 +46,7 @@ export function AddressDisplay({
         {short}
       </button>
       <span aria-live="polite" className="text-[13px] leading-5 text-[var(--color-fg-muted)]">
-        {copied ? 'Copied' : ''}
+        {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : ''}
       </span>
       {explorerUrl === null ? null : (
         <a

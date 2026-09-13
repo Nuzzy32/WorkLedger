@@ -9,11 +9,16 @@ Runs on Base Sepolia testnet. No token, no real money, no mainnet deployment.
 
 ## Status
 
-This repository currently contains **milestones 1 and 2 of 6: the on-chain
-layer, and the deploy and seed pipeline.** The contracts are finished and
-tested, and a single command deploys them to a local chain and populates a
-600-rating demo dataset. Nothing is on a public testnet yet, and the web
-interface described in `docs/` has not been built.
+This repository currently contains **milestones 1 through 3 of 6: the
+on-chain layer, the deploy and seed pipeline, and the public verification
+page.** The contracts are finished and tested, a single command deploys them
+to a local chain and populates a 600-rating demo dataset, and the
+verification page at `/w/[address]` is built and has been checked against
+that seeded data from a production build — the verified profile, the
+unproven profile, the not-found route, and the partial states when the chain
+or the database is unreachable all render as designed. Nothing is on a public
+testnet yet, so every profile the page shows today points at the local anvil
+chain, not Base Sepolia.
 
 | | |
 |---|---|
@@ -25,7 +30,7 @@ interface described in `docs/` has not been built.
 | Re-running the seed | Submits 0 and skips 600 — the chain is the checkpoint |
 | Postgres schema | Applied to a live Supabase project **twice in a row**, both clean |
 | Deployed to public testnet | Not yet — needs a funded Base Sepolia key |
-| Web app | Not yet — milestones 3 and 4 |
+| Verification page (`/w/[address]`) | Built, checked against seeded anvil data, all states render — not deployed publicly |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what ships in which milestone.
 

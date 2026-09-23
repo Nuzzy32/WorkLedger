@@ -163,12 +163,18 @@ forge verify-contract <RATING_REGISTRY> src/RatingRegistry.sol:RatingRegistry \
 
 ## What has and hasn't been run
 
-Executed and proven on this machine: a full local-anvil deploy plus seed
-(`all 40 worker scores match the plan`), and a second seed run against the
-same chain proving idempotency (`ratings submitted 0, already present 600`).
+All of it has now run. Against a local anvil chain: a full deploy plus seed
+(`all 40 worker scores match the plan`) and a second pass proving idempotency
+(`ratings submitted 0, already present 600`).
 
-Documented but not executed: the Base Sepolia deploy, the `forge
-verify-contract` calls above, and applying `sql/001_schema.sql` to Postgres.
-None of the three can run on this machine — there is no funded Base Sepolia
-key, no Basescan API key, and no local Postgres. They are the project owner's
-step, with credentials this environment does not hold.
+Against Base Sepolia: the deploy, a full seed of 600 ratings with all 40
+scores matching, and the three `forge verify-contract` calls above, which
+verified every contract on Basescan. `sql/001_schema.sql` is applied to a live
+Supabase project, and `writeAll` has written the full dataset into it.
+
+The first public seed run found two faults anvil cannot show, both fixed in
+`src/chain.ts`. The public RPC balances across nodes, so a read straight after
+a transaction can land on a node that has not seen its block — platform ids
+now come from the registration receipt instead. And it rejects `eth_getLogs`
+over more than 1,000 blocks, so the transaction-hash recovery a resumed run
+depends on now scans in 1,000-block windows.

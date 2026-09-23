@@ -21,8 +21,9 @@ Postgres and labels it as the last known value, or says plainly that there is
 no score to show when none was ever saved. An unreachable database leaves the
 chain's score standing and puts an error in place of the rating spread and the
 list, rather than rendering them empty as if the worker had never been rated.
-Two things are still open: the contract source is not yet verified on
-Basescan, and the page is not yet deployed to a public URL.
+The contract source is verified on Basescan, so anyone can read a worker's
+score straight off the explorer with no wallet and no code of ours. What is
+still open is a public URL for the page itself.
 
 | | |
 |---|---|
@@ -34,7 +35,7 @@ Basescan, and the page is not yet deployed to a public URL.
 | Re-running the seed | Submits 0 and skips 600 — the chain is the checkpoint |
 | Postgres schema | Applied to a live Supabase project **twice in a row**, both clean |
 | Base Sepolia run | 600 ratings on the public testnet; all 40 worker scores match the independent expectation |
-| Deployed to public testnet | Yes — Base Sepolia, block 47195022 ([addresses](contracts/deployments/base-sepolia.json)); source **not yet verified** on Basescan |
+| Deployed to public testnet | Yes — Base Sepolia, block 47195022 ([addresses](contracts/deployments/base-sepolia.json)), source verified on [Basescan](https://sepolia.basescan.org/address/0x46B9416b410227833A7988aCa574F2ea1D8C6e08#code) |
 | Verification page (`/w/[address]`) | Built and reading Base Sepolia, all states render — not yet at a public URL |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what ships in which milestone.
@@ -180,11 +181,6 @@ Stated openly, because a design that names its own gaps is easier to trust.
   looks like it registered today, no matter how old the demo's invented job
   titles pretend to be. Demo depth comes from rating count, score
   distribution, and platform mix instead — not from backdated history.
-- **The contract source is not verified on Basescan yet.** The contracts are
-  deployed and working, but until the source is verified Basescan shows only
-  bytecode, so a stranger cannot use its Read Contract tab to check a score —
-  which is milestone 2's own done-when. It needs an Etherscan API key; the
-  commands are in [`seed/README.md`](seed/README.md).
 - **`writeAll` (the Postgres write path) has no automated test.** A test
   would have to mock the database client, and a mock only proves the mock
   behaves as written. It has instead written the full dataset against a live

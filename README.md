@@ -22,8 +22,8 @@ no score to show when none was ever saved. An unreachable database leaves the
 chain's score standing and puts an error in place of the rating spread and the
 list, rather than rendering them empty as if the worker had never been rated.
 The contract source is verified on Basescan, so anyone can read a worker's
-score straight off the explorer with no wallet and no code of ours. What is
-still open is a public URL for the page itself.
+score straight off the explorer with no wallet and no code of ours. The page
+itself is live at **[workledger-sand.vercel.app](https://workledger-sand.vercel.app/w/0x98F6c93fdF6d28c4b04CFBad067a9C06ac04D5b0)**.
 
 | | |
 |---|---|
@@ -36,7 +36,7 @@ still open is a public URL for the page itself.
 | Postgres schema | Applied to a live Supabase project **twice in a row**, both clean |
 | Base Sepolia run | 600 ratings on the public testnet; all 40 worker scores match the independent expectation |
 | Deployed to public testnet | Yes — Base Sepolia, block 47195022 ([addresses](contracts/deployments/base-sepolia.json)), source verified on [Basescan](https://sepolia.basescan.org/address/0x46B9416b410227833A7988aCa574F2ea1D8C6e08#code) |
-| Verification page (`/w/[address]`) | Built and reading Base Sepolia, all states render — not yet at a public URL |
+| Verification page (`/w/[address]`) | Live on Vercel, reading Base Sepolia; all states render; median ~0.9s full load from Indonesia |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what ships in which milestone.
 

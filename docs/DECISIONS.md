@@ -491,7 +491,33 @@ reads is the wrong way round for the screen this project exists to show. The
 rendered page is correct either way.
 
 **Cost.** An unknown profile answers 200, so a crawler or link checker reads
-it as a live page.
+it as a live page. A second cost surfaced once deployed: because the status is
+committed before `notFound()` resolves, the not-found content reaches the page
+through the streamed React payload rather than the initial HTML. A browser
+shows it; a client that does not run JavaScript sees only the site header.
+Verified and unproven profiles are unaffected — both arrive complete in the
+initial HTML.
+
+## S. Vercel functions run in Seoul, next to the database
+
+The first production deploy ran the page's server function in `iad1`,
+Washington DC — Vercel's default — while the Supabase project sits in
+`ap-northeast-2`, Seoul. A request from Indonesia entered Vercel's edge in
+Singapore, crossed to the US to render, and crossed the Pacific again for each
+database read. Full page loads measured about 1.3 seconds, steadily, against
+the architecture's sub-second target.
+
+**Resolution.** The project's function region is `icn1`, Seoul, the same
+region as the database. Loads measured 0.70-1.08 seconds over six requests,
+median about 0.9. The remaining time is two rounds of reads against Base
+Sepolia's public RPC, which no region choice shortens.
+
+The region is a Vercel project setting, not a file in this repository. Anyone
+importing the repository into a new Vercel project gets `iad1` again unless
+they set it.
+
+**Cost.** Visitors far from East Asia pay the distance instead. For a demo
+whose database lives in Seoul, the database hop is the one worth removing.
 
 ## Note: renaming the project redeploys `RatingRegistry`
 

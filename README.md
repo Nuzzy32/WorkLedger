@@ -11,30 +11,31 @@ Runs on Base Sepolia testnet. No token, no real money, no mainnet deployment.
 
 This repository currently contains **milestones 1 through 3 of 6: the
 on-chain layer, the deploy and seed pipeline, and the public verification
-page.** The contracts are finished and tested, a single command deploys them
-to a local chain and populates a 600-rating demo dataset, and the
-verification page at `/w/[address]` is built and has been checked against
-that seeded data from a production build: the verified profile, the unproven
+page.** The contracts are finished, tested, and deployed to Base Sepolia,
+where the seed has written a 600-rating demo dataset, and the verification
+page at `/w/[address]` is built and reads that public chain. It has been
+checked from a production build: the verified profile, the unproven
 profile, and the not-found route render as designed, and each outage degrades
 on its own terms. An unreachable chain falls back to the last score saved in
 Postgres and labels it as the last known value, or says plainly that there is
 no score to show when none was ever saved. An unreachable database leaves the
 chain's score standing and puts an error in place of the rating spread and the
 list, rather than rendering them empty as if the worker had never been rated.
-Nothing is on a public testnet yet, so every profile the page shows today
-points at the local anvil chain, not Base Sepolia.
+Two things are still open: the contract source is not yet verified on
+Basescan, and the page is not yet deployed to a public URL.
 
 | | |
 |---|---|
 | Contracts | 3, immutable, no proxies, no upgrade path |
 | Solidity tests | **73 passing** — happy paths, every revert path, fuzz, and 11 attack scenarios |
-| Seeder tests | **29 passing** with no chain and no database required |
+| Seeder tests | **43 passing** with no chain and no database required |
 | Static analysis | Slither: **0 medium or high** findings ([notes](contracts/slither-notes.md)) |
 | Local chain run | 600 ratings submitted; all 40 worker scores match an independently computed expectation |
 | Re-running the seed | Submits 0 and skips 600 — the chain is the checkpoint |
 | Postgres schema | Applied to a live Supabase project **twice in a row**, both clean |
-| Deployed to public testnet | Not yet — needs a funded Base Sepolia key |
-| Verification page (`/w/[address]`) | Built, checked against seeded anvil data, all states render — not deployed publicly |
+| Base Sepolia run | 600 ratings on the public testnet; all 40 worker scores match the independent expectation |
+| Deployed to public testnet | Yes — Base Sepolia, block 47195022 ([addresses](contracts/deployments/base-sepolia.json)); source **not yet verified** on Basescan |
+| Verification page (`/w/[address]`) | Built and reading Base Sepolia, all states render — not yet at a public URL |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what ships in which milestone.
 
@@ -179,23 +180,21 @@ Stated openly, because a design that names its own gaps is easier to trust.
   looks like it registered today, no matter how old the demo's invented job
   titles pretend to be. Demo depth comes from rating count, score
   distribution, and platform mix instead — not from backdated history.
-- **The seed and deploy pipeline has only run against a local anvil chain.**
-  The Base Sepolia deploy and the Basescan verification commands are
-  documented in [`seed/README.md`](seed/README.md) but have not been
-  executed — that needs a funded testnet key and an API key this environment
-  does not hold.
-- **`writeAll` (the Postgres write path) has no test coverage.** With no local
-  Postgres to run against, a test would have to mock the database client, and
-  a mock only proves the mock behaves as written — not that real SQL against
-  real Postgres does the same thing. The schema itself is verified against a
-  live database (below); this is about the TypeScript write path.
-- **The verification page currently serves anvil data.** Base Sepolia is
-  deferred until the wallet holds testnet ETH, so the transaction hashes in a
-  seeded profile point at a local chain. The page hides the block explorer link
-  on chain id 31337 rather than linking somewhere dead, and it is not deployed
-  publicly while this holds. The anvil rows are removed from Postgres before
-  the real Base Sepolia run rather than stacked under it: the chain seed is
-  idempotent, the database is not the place to hold two histories.
+- **The contract source is not verified on Basescan yet.** The contracts are
+  deployed and working, but until the source is verified Basescan shows only
+  bytecode, so a stranger cannot use its Read Contract tab to check a score —
+  which is milestone 2's own done-when. It needs an Etherscan API key; the
+  commands are in [`seed/README.md`](seed/README.md).
+- **`writeAll` (the Postgres write path) has no automated test.** A test
+  would have to mock the database client, and a mock only proves the mock
+  behaves as written. It has instead written the full dataset against a live
+  Supabase database twice — once from anvil and once from Base Sepolia, the
+  second on a run resumed after a failure.
+- **The database sleeps when nobody visits.** Supabase's free tier pauses a
+  project after seven idle days. The page is built for that: the score and
+  the rating count still come from the chain, while display names, the rating
+  spread and the list drop out until the project is restored. A public demo
+  that sits unvisited for a week shows exactly that degraded page.
 
 ## Running locally
 

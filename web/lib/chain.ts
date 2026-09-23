@@ -10,6 +10,8 @@ import {
   type PublicClient,
 } from 'viem'
 import { anvil, baseSepolia } from 'viem/chains'
+// Committed by the deploy script, so it is always present at build time.
+import baseSepoliaDeployment from '../../contracts/deployments/base-sepolia.json'
 
 const DEPLOYMENT_FILES: Record<number, string> = {
   [anvil.id]: 'anvil.json',
@@ -82,13 +84,29 @@ export function deploymentPath(chainId: number, repoRoot: string): string {
   return join(repoRoot, 'contracts', 'deployments', file)
 }
 
+/**
+ * The deployment for a chain.
+ *
+ * Base Sepolia's addresses are bundled at build time rather than read from
+ * disk per request. A serverless function carries only the files its build
+ * traced, and a path assembled from REPO_ROOT is not traced — on Vercel that
+ * read threw ENOENT for every profile, while working perfectly locally.
+ *
+ * anvil's file is gitignored and written by a local deploy, so it can only be
+ * read from disk. That is fine: anvil only ever exists on this machine.
+ */
 export function loadDeployment(chainId: number, repoRoot: string): Deployment {
-  const path = deploymentPath(chainId, repoRoot)
-  const deployment = parseDeployment(JSON.parse(readFileSync(path, 'utf8')))
+  const source =
+    chainId === baseSepolia.id ? 'bundled base-sepolia.json' : deploymentPath(chainId, repoRoot)
+  const deployment = parseDeployment(
+    chainId === baseSepolia.id
+      ? baseSepoliaDeployment
+      : JSON.parse(readFileSync(source, 'utf8')),
+  )
 
   if (deployment.chainId !== chainId) {
     throw new Error(
-      `${path} holds chain id ${deployment.chainId}, but chain id ${chainId} was asked for`,
+      `${source} holds chain id ${deployment.chainId}, but chain id ${chainId} was asked for`,
     )
   }
 

@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
-import { deploymentPath, explorerAddressUrl, explorerTxUrl, parseDeployment } from '../lib/chain.ts'
+import { deploymentPath, explorerAddressUrl, explorerTxUrl, loadDeployment, parseDeployment } from '../lib/chain.ts'
 
 test('parses the deployment file the deploy script writes', () => {
   // Inline, not read from contracts/deployments/anvil.json: that file is
@@ -48,4 +48,16 @@ test('offers explorer links only where an explorer exists', () => {
   assert.equal(explorerTxUrl(84532, txHash), `https://sepolia.basescan.org/tx/${txHash}`)
   assert.equal(explorerAddressUrl(31337, address), null)
   assert.equal(explorerTxUrl(31337, txHash), null)
+})
+
+test('base sepolia addresses load without touching the filesystem', () => {
+  // A serverless function carries only the files its build traced, and a path
+  // assembled from REPO_ROOT is not traced. Pointing repoRoot at a directory
+  // that does not exist reproduces that: the deployment must still load.
+  const deployment = loadDeployment(84532, '/nonexistent-repo-root')
+
+  assert.equal(deployment.chainId, 84532)
+  assert.equal(deployment.ratingRegistry, '0x46B9416b410227833A7988aCa574F2ea1D8C6e08')
+  assert.equal(deployment.workerRegistry, '0x2BFd6132B985b6dc8A60535e50040bc2CCa385E5')
+  assert.equal(deployment.platformRegistry, '0x41097b03Dd6aCE30f69363D28e5e0BcF1ce91Db6')
 })

@@ -15,8 +15,8 @@ test('off anvil a worker gets far less than a client', () => {
   // A worker sends exactly one register() at roughly 100k gas. The busiest
   // client sends about 45 submitRating transactions at roughly 200k gas each,
   // so it does on the order of 45x the work and needs a float to match.
-  assert.equal(fundTargetFor(84532, 'client'), parseEther('0.002'))
-  assert.equal(fundTargetFor(84532, 'worker'), parseEther('0.0005'))
+  assert.equal(fundTargetFor(84532, 'client'), parseEther('0.0018'))
+  assert.equal(fundTargetFor(84532, 'worker'), parseEther('0.0002'))
 })
 
 test('a worker float still clears its one transaction with room to spare', () => {
@@ -41,7 +41,7 @@ test('a client float still clears its whole rating batch', () => {
 test('the whole account set fits inside a single faucet grant', () => {
   // 20 clients at derivation indices 10-29, 40 workers at 100-139.
   const total = 20n * fundTargetFor(84532, 'client') + 40n * fundTargetFor(84532, 'worker')
-  assert.equal(total, parseEther('0.06'))
+  assert.equal(total, parseEther('0.044'))
   assert.ok(
     total < parseEther('0.1'),
     'Base Sepolia faucets dispense 0.05-0.1 ETH per day, so the set must fit one grant',

@@ -54,13 +54,17 @@ deployer (index 0) — never the anvil default — and run the deploy script
 against that RPC URL before running `npm run seed`. `loadConfig` accepts only
 `31337` and `84532`; anything else, mainnet or not, is rejected.
 
-The deployer needs roughly **0.06 ETH**, which one Base Sepolia faucet grant
-covers:
+The deployer needs roughly **0.044 ETH**, which one Ethereum Sepolia faucet
+grant covers once bridged to Base Sepolia:
 
 | Role | Count | Float each | Total |
 |---|---|---|---|
-| Client | 20 | 0.002 ETH | 0.04 ETH |
-| Worker | 40 | 0.0005 ETH | 0.02 ETH |
+| Client | 20 | 0.0018 ETH | 0.036 ETH |
+| Worker | 40 | 0.0002 ETH | 0.008 ETH |
+
+Each float sits exactly on the cushion floor `test/funding.test.ts` enforces:
+20x a worker's worst case and 2x the busiest client's, both priced at a
+hostile 0.1 gwei. Base Sepolia's base fee was 0.005 gwei when they were set.
 
 Plus the deployer's own gas for the deploy and for the 60 top-up transfers.
 

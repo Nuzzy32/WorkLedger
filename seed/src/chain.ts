@@ -157,11 +157,13 @@ export type FundedRole = 'worker' | 'client'
  * work, so funding both to the same figure over-provisions 40 of the 60
  * accounts by more than an order of magnitude.
  *
- * Splitting them takes the deployer's up-front requirement from 0.12 ETH to
- * 0.06 — the difference between two days of Base Sepolia faucet grants and
- * one. Both floats still carry a wide cushion: at a hostile 0.1 gwei a worker
- * needs 0.00001 ETH and the busiest client 0.0009, and Base Sepolia's base fee
- * normally sits between 0.001 and 0.01 gwei.
+ * Each float sits exactly on the cushion floor the tests in
+ * test/funding.test.ts enforce: 20x a worker's worst case and 2x the busiest
+ * client's, both priced at a hostile 0.1 gwei (0.00001 and 0.0009 ETH). That
+ * puts the deployer's up-front requirement at 0.044 ETH, which fits the
+ * roughly 0.048 ETH one Ethereum Sepolia faucet grant delivers once bridged.
+ * Base Sepolia's base fee was measured at 0.005 gwei when these were set, a
+ * twentieth of the hostile figure the cushions are priced against.
  *
  * anvil keeps one fat float for both roles: `anvil_setBalance` is a free RPC
  * call rather than a transfer, so there is nothing to save locally, and
@@ -169,7 +171,7 @@ export type FundedRole = 'worker' | 'client'
  */
 export function fundTargetFor(chainId: number, role: FundedRole): bigint {
   if (chainId === ANVIL_CHAIN_ID) return parseEther('0.05')
-  return role === 'client' ? parseEther('0.002') : parseEther('0.0005')
+  return role === 'client' ? parseEther('0.0018') : parseEther('0.0002')
 }
 
 /**

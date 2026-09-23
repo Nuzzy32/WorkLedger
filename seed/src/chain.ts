@@ -7,16 +7,24 @@ import {
   parseEther,
   formatEther,
   zeroAddress,
+  parseEventLogs,
   keccak256,
   stringToBytes,
   type Address,
   type Chain,
   type HDAccount,
   type Hex,
+  type Log,
   type PublicClient,
 } from 'viem'
 import { foundry, baseSepolia } from 'viem/chains'
-import { PLATFORM_REGISTRY_ABI, WORKER_REGISTRY_ABI, RATING_REGISTRY_ABI, RATING_SUBMITTED_EVENT } from './abi.ts'
+import {
+  PLATFORM_REGISTRY_ABI,
+  PLATFORM_REGISTERED_EVENT,
+  WORKER_REGISTRY_ABI,
+  RATING_REGISTRY_ABI,
+  RATING_SUBMITTED_EVENT,
+} from './abi.ts'
 import type { Config } from './config.ts'
 import type { Accounts } from './accounts.ts'
 import { expectedScoreBps, type SeedPlan } from './plan.ts'
@@ -91,6 +99,55 @@ export function makeClients(config: Config) {
 }
 
 /**
+ * Widest block range one eth_getLogs call may span on Base Sepolia's public
+ * RPC, which rejects anything larger with "eth_getLogs is limited to a 1,000
+ * range". anvil has no cap, which is why this only surfaced on the first
+ * public run.
+ */
+export const LOG_BLOCK_RANGE = 1000n
+
+/**
+ * Split an inclusive block range into windows no wider than `size`.
+ *
+ * Returns an empty list when `to` precedes `from`, so a caller scanning from a
+ * deployment block that is somehow ahead of the head asks for nothing rather
+ * than for a negative range.
+ */
+export function logBlockWindows(
+  from: bigint,
+  to: bigint,
+  size: bigint = LOG_BLOCK_RANGE,
+): { fromBlock: bigint; toBlock: bigint }[] {
+  const windows: { fromBlock: bigint; toBlock: bigint }[] = []
+  for (let start = from; start <= to; start += size) {
+    const end = start + size - 1n
+    windows.push({ fromBlock: start, toBlock: end < to ? end : to })
+  }
+  return windows
+}
+
+/**
+ * The platform id a `registerPlatform` transaction assigned, read from its own
+ * receipt.
+ *
+ * Throws rather than returning 0 when the receipt carries no matching event:
+ * 0 is the registry's "unknown platform" answer, and silently passing it on is
+ * the failure this function exists to prevent.
+ */
+export function platformIdFromLogs(logs: readonly Log[], signer: Address): number {
+  const events = parseEventLogs({
+    abi: [PLATFORM_REGISTERED_EVENT],
+    eventName: 'PlatformRegistered',
+    logs: [...logs],
+  })
+  const match = events.find((event) => event.args.signer.toLowerCase() === signer.toLowerCase())
+  if (match === undefined) {
+    throw new Error(`registerPlatform receipt carries no PlatformRegistered event for ${signer}`)
+  }
+  return match.args.platformId
+}
+
+/**
  * Register the plan's platforms, skipping any signer already on the allowlist.
  *
  * Idempotency check: `platformIdOf(signer) != 0`. Registering twice would revert
@@ -127,15 +184,13 @@ export async function ensurePlatforms(ctx: ChainCtx, plan: SeedPlan): Promise<nu
       chain: resolveChain(ctx.config.chainId),
       account: ctx.accounts.deployer,
     })
-    await ctx.publicClient.waitForTransactionReceipt({ hash })
+    const receipt = await ctx.publicClient.waitForTransactionReceipt({ hash })
 
-    const assigned = await ctx.publicClient.readContract({
-      address: ctx.addresses.platformRegistry,
-      abi: PLATFORM_REGISTRY_ABI,
-      functionName: 'platformIdOf',
-      args: [signer],
-    })
-    ids.push(assigned)
+    // Take the id from the receipt, not from a follow-up platformIdOf read.
+    // A load-balanced public RPC can route that read to a node that has not
+    // seen the block yet and answer 0. The first Base Sepolia run printed
+    // "platforms ready: 0, 2, 0" while the chain held 1, 2 and 3.
+    ids.push(platformIdFromLogs(receipt.logs, signer))
   }
 
   return ids
@@ -314,26 +369,28 @@ export async function submitRatings(
   let submitted = 0
   let skipped = 0
 
-  // One unbounded getLogs for the whole event, not one per skipped rating.
-  // A resumed run can skip up to 600 ratings, and public Base Sepolia RPCs
-  // cap eth_getLogs block ranges — 600 full-range requests would be throttled
-  // or rejected there. Indexing once turns 600 requests into 1.
+  // Index every RatingSubmitted log once, rather than one lookup per skipped
+  // rating: a resumed run can skip all 600.
   //
-  // fromBlock starts at the deployment block, not 0: the registry cannot have
-  // emitted a log before the block it was deployed in, so scanning earlier is
-  // both wasteful and, on a public RPC that caps the block range rather than
-  // the request count, fatal — Base Sepolia is tens of millions of blocks in.
-  const submittedLogs = await ctx.publicClient.getLogs({
-    address: ctx.addresses.ratingRegistry,
-    event: RATING_SUBMITTED_EVENT,
-    fromBlock: ctx.addresses.block,
-    toBlock: 'latest',
-  })
+  // The scan starts at the deployment block, since the registry cannot have
+  // emitted anything earlier, and walks to the head in LOG_BLOCK_RANGE
+  // windows. Starting at the deployment block alone is not enough: Base
+  // Sepolia makes a block every two seconds, so a single deploy-to-head query
+  // outgrows the public RPC's 1,000-block cap about half an hour after the
+  // deploy — and a resumed run is exactly the one that comes later.
   const knownTxHashes = new Map<Hex, Hex>()
-  for (const log of submittedLogs) {
-    const jobId = log.args.jobId
-    if (jobId !== undefined && log.transactionHash !== null) {
-      knownTxHashes.set(jobId, log.transactionHash)
+  const head = await ctx.publicClient.getBlockNumber()
+  for (const window of logBlockWindows(ctx.addresses.block, head)) {
+    const logs = await ctx.publicClient.getLogs({
+      address: ctx.addresses.ratingRegistry,
+      event: RATING_SUBMITTED_EVENT,
+      ...window,
+    })
+    for (const log of logs) {
+      const jobId = log.args.jobId
+      if (jobId !== undefined && log.transactionHash !== null) {
+        knownTxHashes.set(jobId, log.transactionHash)
+      }
     }
   }
 

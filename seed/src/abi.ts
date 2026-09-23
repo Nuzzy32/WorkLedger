@@ -25,6 +25,19 @@ export const PLATFORM_REGISTRY_ABI = [
   },
 ] as const
 
+/**
+ * Emitted by `registerPlatform`. Mirrors `PlatformRegistry.sol`:
+ * `event PlatformRegistered(uint32 indexed platformId, address indexed signer)`.
+ */
+export const PLATFORM_REGISTERED_EVENT = {
+  type: 'event',
+  name: 'PlatformRegistered',
+  inputs: [
+    { name: 'platformId', type: 'uint32', indexed: true },
+    { name: 'signer', type: 'address', indexed: true },
+  ],
+} as const
+
 export const WORKER_REGISTRY_ABI = [
   { type: 'function', name: 'register', stateMutability: 'nonpayable', inputs: [], outputs: [] },
   {

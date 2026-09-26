@@ -10,7 +10,7 @@ export function PlatformChip({ platform }: { platform: PlatformView }) {
   const name = platform.name ?? `Platform ${platform.id}`
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-surface px-3 py-2 text-[13px] leading-5">
+    <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3.5 py-1.5 text-sm">
       <span className="font-semibold">{name}</span>
       {/* Only a known-inactive platform gets the treatment. `null` is an
           unread status, and an unread status is not a claim about anyone. */}

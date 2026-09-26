@@ -13,6 +13,12 @@ const RING: Record<'verified' | 'unproven' | 'neutral', string> = {
   neutral: 'border-[var(--color-border)]',
 }
 
+const TEXT: Record<'verified' | 'unproven' | 'neutral', string> = {
+  verified: 'text-[var(--color-verified)]',
+  unproven: 'text-[var(--color-caution)]',
+  neutral: 'text-[var(--color-fg)]',
+}
+
 /**
  * The centerpiece. Never renders a number without its count: a 5.00 from one
  * job and a 4.70 from three hundred must not look alike.
@@ -27,27 +33,31 @@ export function ScoreBadge({ scoreBps, ratingCount, state, neutralRing }: ScoreB
   const icon = partial ? '↺' : state === 'verified' ? '✓' : '!'
 
   return (
-    <div className={`flex items-center gap-4 rounded-lg border-2 bg-surface p-4 md:p-6 ${RING[tone]}`}>
-      <p className="tabular text-[32px] font-semibold leading-10">{formatScore(scoreBps)}</p>
+    <div
+      className={`flex flex-col gap-4 rounded-[24px] border-2 bg-[var(--color-surface-2)] p-5 sm:flex-row sm:items-center sm:gap-8 md:p-8 ${RING[tone]}`}
+    >
+      <p className="tabular text-[clamp(3.5rem,9vw,5.5rem)] font-semibold leading-none tracking-tighter">
+        {formatScore(scoreBps)}
+      </p>
       <div>
-        <p className="text-[13px] leading-5 text-[var(--color-fg-muted)]">
+        <p className="text-sm text-[var(--color-fg-muted)]">
           {ratingCount} {ratingCount === 1 ? 'rating' : 'ratings'}
         </p>
-        <p className="flex items-center gap-1 text-[13px] font-semibold leading-5">
+        <p className={`mt-1 flex items-center gap-2 text-base font-semibold ${TEXT[tone]}`}>
           <span aria-label={label} role="img">
             {icon}
           </span>
           {label}
         </p>
         {neutralRing ? (
-          <p className="mt-1 text-[13px] leading-5 text-[var(--color-fg-muted)]">
+          <p className="mt-2 max-w-sm text-sm text-[var(--color-fg-muted)]">
             One platform in this history no longer issues ratings.
           </p>
         ) : null}
         {/* Both notes when both apply: they answer different questions, and a
             small sample stays a small sample whoever issued it. */}
         {state === 'unproven' ? (
-          <p className="mt-1 text-[13px] leading-5 text-[var(--color-fg-muted)]">
+          <p className="mt-2 max-w-sm text-sm text-[var(--color-fg-muted)]">
             Fewer than 10 ratings. Too small a sample to judge.
           </p>
         ) : null}

@@ -27,8 +27,8 @@ export function RatingList({
   databaseError = false,
 }: RatingListProps) {
   return (
-    <section className="rounded-lg border border-[var(--color-border)] bg-surface p-4 md:p-6">
-      <h2 className="text-lg font-semibold leading-7">Recent ratings</h2>
+    <section className="panel p-5 md:p-8">
+      <h2 className="text-xl font-semibold tracking-tight md:text-2xl">Recent ratings</h2>
 
       {databaseError ? (
         <>
@@ -38,7 +38,7 @@ export function RatingList({
             </span>
             The list could not be loaded just now.
           </p>
-          <p className="mt-1 max-w-prose text-[var(--color-fg-muted)]">
+          <p className="mt-1 max-w-[60ch] text-[var(--color-fg-muted)]">
             This says nothing about the worker. The score above is the chain&rsquo;s
             answer and stands on its own.
           </p>
@@ -49,20 +49,20 @@ export function RatingList({
         </p>
       ) : (
         <>
-          <p className="mt-1 text-[13px] leading-5 text-[var(--color-fg-muted)]">
+          <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
             Showing {ratings.length} of {totalCount}.
           </p>
-          <ul className="mt-4 flex flex-col gap-4">
+          <ul className="mt-6 grid gap-3 md:grid-cols-2">
             {ratings.map((rating) => {
               const url = explorerTxUrl(rating.txHash)
 
               return (
                 <li
                   key={rating.jobId}
-                  className="border-t border-[var(--color-border)] pt-4 first:border-t-0 first:pt-0"
+                  className="rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-5"
                 >
                   <div className="flex items-baseline gap-3">
-                    <span className="tabular text-lg font-semibold leading-7">
+                    <span className="tabular text-2xl font-semibold tracking-tight text-[var(--color-accent)]">
                       {rating.score}
                       {/* A bare number beside a job title is read out as "5". */}
                       <span className="sr-only"> out of 5</span>
@@ -77,14 +77,14 @@ export function RatingList({
                         active: rating.platformActive,
                       }}
                     />
-                    <span className="text-[13px] leading-5 text-[var(--color-fg-muted)]">
+                    <span className="text-sm text-[var(--color-fg-muted)]">
                       {formatDate(rating.submittedAt)}
                     </span>
                   </div>
                   {rating.comment === null ? null : (
-                    <p className="mt-2 max-w-prose">{rating.comment}</p>
+                    <p className="mt-3 max-w-[60ch] text-[var(--color-fg)]/90">{rating.comment}</p>
                   )}
-                  <p className="mt-2 break-all font-mono text-[13px] leading-5 text-[var(--color-fg-muted)]">
+                  <p className="mt-2 break-all font-mono text-xs text-[var(--color-fg-muted)]">
                     {url === null ? (
                       // No explorer, so this string is the only route to the raw
                       // record. Truncated it would be useless; a link can afford
@@ -93,7 +93,7 @@ export function RatingList({
                     ) : (
                       <a
                         href={url}
-                        className="inline-flex min-h-11 items-center text-[var(--color-accent)] underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                        className="focus-ring inline-flex min-h-11 items-center rounded text-[var(--color-accent)] underline underline-offset-4"
                       >
                         {`${rating.txHash.slice(0, 18)}…`}
                       </a>

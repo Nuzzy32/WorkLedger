@@ -519,6 +519,80 @@ they set it.
 **Cost.** Visitors far from East Asia pay the distance instead. For a demo
 whose database lives in Seoul, the database hop is the one worth removing.
 
+## T. A server-side drip pays each worker's first registration
+
+`register()` costs gas, and an embedded wallet created at sign-in holds none.
+Asking a worker who has never touched crypto to visit a faucet would break the
+M4 goal of reaching a profile in under a minute.
+
+**Resolution.** `POST /api/register-gas` verifies the caller's Privy access
+token (ES256, checked with WebCrypto against the app's verification key),
+looks the user up through Privy's REST API, and funds the embedded wallet
+Privy reports. The address never comes from the request, so a caller cannot
+aim the drip at an arbitrary wallet. `web/lib/drip.ts` sends the estimated
+cost of one `register()` times three, minus whatever the wallet already holds.
+
+The limit lives on chain rather than in a table: a wallet qualifies only while
+it is unregistered and has never sent a transaction. Registering is that
+first transaction, and so is moving the drip elsewhere, so either one ends the
+wallet's eligibility. An in-memory set blocks a double click on one instance.
+
+**Cost.** The server holds a hot testnet key (`DRIP_PRIVATE_KEY`) that has to
+be topped up by hand. Two requests racing on separate instances can both pay,
+and one Google account per drip is the only Sybil barrier. Each loss is a
+fraction of a cent of testnet ETH. A Postgres row per funded wallet closes the
+race if it ever matters, but `web/` has no write access to Postgres today
+(entry O), and adding one is a bigger change than the dust it would save.
+
+## U. `web/` bumps viem to 2.56.0 and installs with `legacy-peer-deps`
+
+`@privy-io/react-auth` pins viem 2.56.0. With `web/` still on 2.21.55, npm
+resolved Privy's copies to the older version and flagged them invalid.
+`web/` now pins 2.56.0 exactly, and the typecheck plus the full test suite
+pass unchanged.
+
+Privy also lists optional peers for features this app never enables (smart
+wallets, Solana, Farcaster, a card onramp), and their own peers conflict.
+`web/.npmrc` sets `legacy-peer-deps=true` so installs, Vercel's included,
+skip them. `web/next.config.ts` aliases the two that webpack still tries to
+resolve (`@stripe/stripe-js`, `@farcaster/mini-app-solana`) to empty
+modules.
+
+**Cost.** A build warning from viem 2.56's bundled `ox` about a dynamic
+import. Harmless, and not ours to fix. Turning on any of those Privy features
+later means installing the matching peer first.
+
+## V. The dashboard renders on the server, keyed by a cookie
+
+Privy keeps its session in the browser, so a server component cannot know who
+signed in. Everything the dashboard shows is already public at
+`/w/<address>`, though, so it does not need to.
+
+**Resolution.** Once signed in, `AccountGate` writes the embedded wallet's
+address to a `wl_worker` cookie and refreshes. `app/dashboard/page.tsx`
+reads it and renders through the same `loadProfile` the public page uses, so
+the two can never disagree about a worker. The only authenticated action,
+the drip, checks the Privy token itself.
+
+**Cost.** Editing the cookie shows another worker's public profile on your
+own dashboard, which is exactly what their `/w/` link already shows anyone.
+
+## W. The web UI no longer follows `docs/DESIGN-SYSTEM.md`
+
+At the start of M4 the project owner asked for a new visual direction across
+the whole site: dark theme, Geist, GSAP scroll motion, and an editorial
+landing page. `docs/DESIGN-SYSTEM.md` is superseded for visuals and has not
+been rewritten.
+
+What carried over is the part that was never about looks. Every state still
+travels with an icon and a label, not color alone. The four data states are
+still designed. The unproven threshold is still 10 ratings. `/w/[address]`
+still ships no animation library and no auth bundle: Privy loads only under
+`/dashboard`, and the verifier hero has no entry fade, since an element that
+starts at opacity 0 delays the page's largest paint.
+
+**Cost.** The doc and the code disagree until someone rewrites the doc.
+
 ## Note: renaming the project redeploys `RatingRegistry`
 
 The EIP-712 domain name is the literal string `"WorkLedger"`

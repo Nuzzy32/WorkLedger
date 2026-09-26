@@ -1,4 +1,4 @@
-/** docs/DESIGN-SYSTEM.md: under ten ratings the profile is unproven. */
+/** Under ten ratings the profile is unproven. */
 export const UNPROVEN_THRESHOLD = 10
 
 /** How many ratings the public page lists. The distribution still counts all of them. */
@@ -80,4 +80,24 @@ export function selectState(signals: ProfileSignals): ProfileVerdict {
     state: signals.ratingCount < UNPROVEN_THRESHOLD ? 'unproven' : 'verified',
     neutralRing: signals.hasDeactivatedIssuer,
   }
+}
+
+/**
+ * The contract's scoring rule, in the same integer arithmetic as
+ * RatingRegistry.previewScoreBps: multiply to basis points first, then divide
+ * and truncate. The dashboard shows this next to the chain's own answer, so
+ * the two must agree to the basis point.
+ */
+export function previewScoreBps(
+  ratingCount: number,
+  scoreSum: number,
+  priorScoreBps: number,
+  priorWeight: number,
+): number {
+  return Math.floor((scoreSum * 10_000 + priorWeight * priorScoreBps) / (ratingCount + priorWeight))
+}
+
+/** Ratings still needed to leave the unproven band. Zero once verified. */
+export function ratingsToVerified(ratingCount: number): number {
+  return Math.max(0, UNPROVEN_THRESHOLD - ratingCount)
 }

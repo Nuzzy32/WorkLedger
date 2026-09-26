@@ -1,13 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { SiteFooter } from '../components/SiteFooter.tsx'
+import { SiteNav } from '../components/SiteNav.tsx'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
-  display: 'swap',
-})
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist', display: 'swap' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'WorkLedger',
@@ -16,9 +14,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body>
-        <div className="mx-auto max-w-[1120px] px-4 py-6 md:px-6 md:py-8">{children}</div>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+      <body className="grain">
+        <SiteNav />
+        {/* overflow-x-hidden: off-screen animation starts must never widen the page. */}
+        <div className="w-full max-w-full overflow-x-hidden">{children}</div>
+        <SiteFooter />
       </body>
     </html>
   )

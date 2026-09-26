@@ -12,7 +12,7 @@ export async function profileQrSvg(url: string): Promise<string | null> {
       type: 'svg',
       margin: 1,
       errorCorrectionLevel: 'M',
-      color: { dark: '#1C1917', light: '#FFFFFF' },
+      color: { dark: '#0B0B0C', light: '#EDEDEA' },
     })
     return svg.trim()
   } catch {
@@ -27,15 +27,15 @@ export async function ProfileQr({ url }: { url: string }) {
   const svg = await profileQrSvg(url)
 
   return (
-    <section className="rounded-lg border border-[var(--color-border)] bg-surface p-4 md:p-6">
-      <h2 className="text-lg font-semibold leading-7">Share this profile</h2>
+    <section className="panel p-5 md:p-8">
+      <h2 className="text-xl font-semibold tracking-tight md:text-2xl">Share this profile</h2>
       {svg === null ? null : (
         <>
-          <p className="mt-1 text-[13px] leading-5 text-[var(--color-fg-muted)]">
+          <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
             Scanning this opens the same page.
           </p>
           <div
-            className="mt-4 w-40"
+            className="mt-6 w-44 overflow-hidden rounded-2xl"
             role="img"
             aria-label="QR code linking to this profile"
             // The SVG is generated from a URL this server built, not from user
@@ -44,7 +44,7 @@ export async function ProfileQr({ url }: { url: string }) {
           />
         </>
       )}
-      <p className="mt-4 break-all font-mono text-[13px] leading-5">{url}</p>
+      <p className="mt-6 break-all font-mono text-sm text-[var(--color-fg-muted)]">{url}</p>
     </section>
   )
 }

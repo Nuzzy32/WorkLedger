@@ -35,14 +35,14 @@ export function VerificationResult({
 }: VerificationResultProps) {
   if (state === 'not-found') {
     return (
-      <section className="rounded-lg border border-[var(--color-border)] bg-surface p-4 md:p-6">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold leading-8">
-          <span aria-label="No record" role="img">
-            —
+      <section className="panel p-5 md:p-10">
+        <h1 className="flex items-center gap-3 text-[clamp(2rem,4vw,3rem)] font-semibold leading-tight tracking-tighter">
+          <span aria-label="No record" role="img" className="text-[var(--color-fg-muted)]">
+            ○
           </span>
           No record for this address
         </h1>
-        <p className="mt-4 max-w-prose text-[var(--color-fg-muted)]">
+        <p className="mt-4 max-w-[60ch] text-lg text-[var(--color-fg-muted)]">
           Nothing has been recorded here. That is not a warning: an address with no
           history looks exactly like an address that was mistyped.
         </p>
@@ -51,25 +51,27 @@ export function VerificationResult({
   }
 
   return (
-    <section className="rounded-lg border border-[var(--color-border)] bg-surface p-4 md:p-6">
-      <h1 className="text-2xl font-semibold leading-8">{displayName ?? 'Unnamed worker'}</h1>
+    <section className="panel p-5 md:p-10">
+      <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-tight tracking-tighter">
+        {displayName ?? 'Unnamed worker'}
+      </h1>
       {headline === null ? null : (
-        <p className="mt-1 text-[var(--color-fg-muted)]">{headline}</p>
+        <p className="mt-2 text-lg text-[var(--color-fg-muted)]">{headline}</p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-8">
         {state === 'empty' ? (
-          <p className="flex items-center gap-2 text-[15px]">
+          <p className="flex max-w-[60ch] items-start gap-3 text-lg">
             <span aria-label="No ratings yet" role="img">
-              —
+              ○
             </span>
             No ratings yet. Ratings appear here once a platform confirms a finished
             job and the client rates it.
           </p>
         ) : scoreBps === null ? (
-          <p className="flex items-center gap-2 text-[15px]">
+          <p className="flex max-w-[60ch] items-start gap-3 text-lg">
             <span aria-label="No score available" role="img">
-              —
+              ○
             </span>
             No score to show. The chain could not be reached and no score was saved
             here before now.
@@ -85,14 +87,14 @@ export function VerificationResult({
       </div>
 
       {state === 'partial' ? (
-        <p className="mt-4 flex items-center gap-2 text-[13px] leading-5 text-[var(--color-caution)]">
+        <p className="mt-4 flex items-center gap-2 text-sm text-[var(--color-caution)]">
           <span aria-label="Cached value" role="img">
             ↺
           </span>
           Showing the last known value{cachedAt === null ? '' : `, saved ${formatCachedAt(cachedAt)}`}.
         </p>
       ) : cachedAt === null ? null : (
-        <p className="mt-4 text-[13px] leading-5 text-[var(--color-fg-muted)]">
+        <p className="mt-4 text-sm text-[var(--color-fg-muted)]">
           Last updated {formatCachedAt(cachedAt)}.
         </p>
       )}

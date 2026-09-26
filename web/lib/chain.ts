@@ -27,12 +27,15 @@ const DEPLOYMENT_FILES: Record<number, string> = {
 const CHAINS: Record<number, Chain> = { [anvil.id]: anvil, [baseSepolia.id]: baseSepolia }
 
 export const workerRegistryAbi = parseAbi([
+  'function register()',
   'function isRegistered(address worker) view returns (bool)',
   'function statsOf(address worker) view returns (uint64 registeredAt, uint32 ratingCount, uint32 scoreSum)',
 ])
 
 export const ratingRegistryAbi = parseAbi([
   'function scoreOf(address worker) view returns (uint256 scoreBps)',
+  'function PRIOR_SCORE_BPS() view returns (uint256)',
+  'function PRIOR_WEIGHT() view returns (uint32)',
 ])
 
 export const platformRegistryAbi = parseAbi([
@@ -127,16 +130,23 @@ export function explorerTxUrl(chainId: number, txHash: string): string | null {
   return chainId === baseSepolia.id ? `https://sepolia.basescan.org/tx/${txHash}` : null
 }
 
-export function createChainClient(chainId: number, rpcUrl: string): PublicClient {
+export function chainFor(chainId: number): Chain {
   const chain = CHAINS[chainId as keyof typeof CHAINS]
   if (chain === undefined) throw new Error(`unsupported chain id ${chainId}`)
+  return chain
+}
 
-  return createPublicClient({ chain, transport: http(rpcUrl) })
+export function createChainClient(chainId: number, rpcUrl: string): PublicClient {
+  return createPublicClient({ chain: chainFor(chainId), transport: http(rpcUrl) })
 }
 
 export interface WorkerChainState {
   registered: boolean
   ratingCount: number
+  /** Sum of every score received, 1..5 each. The formula's other input. */
+  scoreSum: number
+  /** Unix seconds; 0 when unregistered. */
+  registeredAt: number
   /** Basis points. Carries the prior baseline even when unregistered. */
   scoreBps: number
 }
@@ -167,14 +177,45 @@ export async function readWorkerChainState(
     }),
   ])
 
-  // statsOf also returns registeredAt and scoreSum; this page renders neither.
-  const [, ratingCount] = stats
+  const [registeredAt, ratingCount, scoreSum] = stats
 
   return {
     registered,
     ratingCount: Number(ratingCount),
+    scoreSum: Number(scoreSum),
+    registeredAt: Number(registeredAt),
     scoreBps: Number(scoreBps),
   }
+}
+
+export interface ScoringPrior {
+  priorScoreBps: number
+  priorWeight: number
+}
+
+/**
+ * The formula's constants, read from the deployed contract rather than copied
+ * here: they are immutable on chain, and a copy would be one more place for
+ * the breakdown to disagree with the score it explains.
+ */
+export async function readScoringPrior(
+  client: PublicClient,
+  deployment: Deployment,
+): Promise<ScoringPrior> {
+  const [priorScoreBps, priorWeight] = await Promise.all([
+    client.readContract({
+      address: deployment.ratingRegistry,
+      abi: ratingRegistryAbi,
+      functionName: 'PRIOR_SCORE_BPS',
+    }),
+    client.readContract({
+      address: deployment.ratingRegistry,
+      abi: ratingRegistryAbi,
+      functionName: 'PRIOR_WEIGHT',
+    }),
+  ])
+
+  return { priorScoreBps: Number(priorScoreBps), priorWeight: Number(priorWeight) }
 }
 
 /**

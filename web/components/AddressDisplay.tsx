@@ -35,25 +35,25 @@ export function AddressDisplay({
   }
 
   return (
-    <span className="inline-flex items-center gap-3">
+    <span className="inline-flex flex-wrap items-center gap-3">
       <button
         type="button"
         onClick={copy}
         data-address={address}
         aria-label={`Copy address ${address}`}
-        className="min-h-11 rounded-md border border-[var(--color-border)] bg-surface px-3 font-mono text-[13px] leading-5 transition-colors duration-150 hover:bg-[var(--color-accent-weak)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+        className="focus-ring min-h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 font-mono text-sm transition-colors duration-150 hover:bg-[var(--color-accent-weak)]"
       >
         {short}
       </button>
-      <span aria-live="polite" className="text-[13px] leading-5 text-[var(--color-fg-muted)]">
+      <span aria-live="polite" className="text-sm text-[var(--color-fg-muted)]">
         {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : ''}
       </span>
       {explorerUrl === null ? null : (
         <a
           href={explorerUrl}
           // inline-flex, because min-height does nothing to an inline box and
-          // docs/DESIGN-SYSTEM.md asks for 44px on a phone.
-          className="inline-flex min-h-11 items-center text-[13px] leading-5 text-[var(--color-accent)] underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          // a phone needs a 44px tap target.
+          className="focus-ring inline-flex min-h-11 items-center rounded text-sm text-[var(--color-accent)] underline underline-offset-4"
         >
           View the record
         </a>

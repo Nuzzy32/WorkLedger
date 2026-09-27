@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import Link from 'next/link'
-import { AccountGate, WORKER_COOKIE } from '../../components/AccountGate.tsx'
+import { AccountGate } from '../../components/AccountGate.tsx'
 import { AddressDisplay } from '../../components/AddressDisplay.tsx'
 import { CopyButton } from '../../components/CopyButton.tsx'
 import { ProfileQr } from '../../components/ProfileQr.tsx'
@@ -8,7 +8,7 @@ import { RatingDistribution } from '../../components/RatingDistribution.tsx'
 import { RatingList } from '../../components/RatingList.tsx'
 import { ScoreBreakdown } from '../../components/ScoreBreakdown.tsx'
 import { VerificationResult } from '../../components/VerificationResult.tsx'
-import { normalizeAddress } from '../../lib/address.ts'
+import { normalizeAddress, WORKER_COOKIE } from '../../lib/address.ts'
 import {
   createChainClient,
   explorerAddressUrl,

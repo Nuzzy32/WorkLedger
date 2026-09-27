@@ -1,6 +1,6 @@
 'use client'
 
-import { useLoginWithOAuth, usePrivy, useWallets } from '@privy-io/react-auth'
+import { useCreateWallet, useLoginWithOAuth, usePrivy, useWallets } from '@privy-io/react-auth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -12,9 +12,8 @@ import {
   type Address,
 } from 'viem'
 import { anvil, baseSepolia } from 'viem/chains'
+import { WORKER_COOKIE } from '../lib/address.ts'
 
-/** Read by the dashboard's server render to know whose profile to load. */
-export const WORKER_COOKIE = 'wl_worker'
 
 const registerAbi = parseAbi(['function register()'])
 
@@ -60,12 +59,31 @@ export function AccountGate({
   const [signInError, setSignInError] = useState(false)
   const [step, setStep] = useState<SetupStep>('idle')
   const [justRegistered, setJustRegistered] = useState(false)
+  const [walletFailed, setWalletFailed] = useState(false)
   const running = useRef(false)
+  const creatingWallet = useRef(false)
+  const { createWallet } = useCreateWallet()
 
   const address = (user?.wallet?.address ?? null) as Address | null
   const embedded = wallets.find((wallet) => wallet.walletClientType === 'privy')
   const matches = address !== null && renderedFor !== null && isAddressEqual(address, renderedFor)
   const needsSetup = matches && registered === false && !justRegistered
+
+  // Privy only creates a wallet on login through its own modal. This page
+  // signs in headlessly, so it makes the wallet itself on first sign-in.
+  useEffect(() => {
+    if (!ready || !authenticated || user === null || user.wallet !== undefined) return
+    if (creatingWallet.current || walletFailed) return
+    creatingWallet.current = true
+    createWallet()
+      .catch((error: unknown) => {
+        console.error('wallet creation failed', error)
+        setWalletFailed(true)
+      })
+      .finally(() => {
+        creatingWallet.current = false
+      })
+  }, [ready, authenticated, user, walletFailed, createWallet])
 
   // The server rendered for whoever the cookie named. Point it at this user.
   useEffect(() => {
@@ -141,10 +159,15 @@ export function AccountGate({
     setSignInError(false)
     try {
       await initOAuth({ provider: 'google' })
-    } catch {
+    } catch (error) {
+      console.error('google sign-in failed', error)
       setSignInError(true)
     }
   }
+
+  useEffect(() => {
+    if (oauthState.status === 'error') console.error('oauth flow error', oauthState.error)
+  }, [oauthState])
 
   if (!ready) return <GateSkeleton />
 
@@ -152,7 +175,7 @@ export function AccountGate({
     const failed = signInError || oauthState.status === 'error'
     const busy = oauthLoading || oauthState.status === 'loading'
     return (
-      <section className="panel animate-rise mx-auto max-w-2xl p-6 text-center md:p-12">
+      <section className="panel animate-rise mx-auto w-full max-w-2xl p-6 text-center md:p-12">
         <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-tight tracking-tighter">
           Your ratings, in one place
         </h1>
@@ -172,11 +195,30 @@ export function AccountGate({
     )
   }
 
+  if (walletFailed) {
+    return (
+      <section className="panel mx-auto w-full max-w-2xl p-6 md:p-12">
+        <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tighter text-[var(--color-danger)]">
+          <span aria-label="Failed" role="img">
+            ×
+          </span>
+          Your account could not be prepared
+        </h1>
+        <p className="mt-4 max-w-[52ch] text-lg text-[var(--color-fg-muted)]">
+          Signing in worked, but the next step did not. Trying again is safe.
+        </p>
+        <button type="button" onClick={() => setWalletFailed(false)} className="btn btn-primary mt-8">
+          Try again
+        </button>
+      </section>
+    )
+  }
+
   if (!matches) return <GateSkeleton label="Opening your profile" />
 
   if (needsSetup || step !== 'idle') {
     return (
-      <section className="panel mx-auto max-w-2xl p-6 md:p-12" aria-live="polite">
+      <section className="panel mx-auto w-full max-w-2xl p-6 md:p-12" aria-live="polite">
         {step === 'failed' ? (
           <>
             <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tighter text-[var(--color-danger)]">
@@ -248,7 +290,7 @@ export function AccountGate({
 function GateSkeleton({ label = 'Loading' }: { label?: string }) {
   return (
     <section
-      className="panel mx-auto max-w-2xl animate-pulse p-6 md:p-12"
+      className="panel mx-auto w-full max-w-2xl animate-pulse p-6 md:p-12"
       aria-busy="true"
       aria-label={label}
     >

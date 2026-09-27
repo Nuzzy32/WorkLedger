@@ -21,3 +21,12 @@ export function normalizeAddress(raw: string): NormalizedAddress | null {
   const display = getAddress(raw)
   return { queryKey: display.toLowerCase(), display }
 }
+
+/**
+ * Cookie naming the worker whose public profile the dashboard renders.
+ *
+ * Lives here, not in the client component that writes it: a server component
+ * importing a value from a 'use client' file receives a client reference, not
+ * the string, so the cookie lookup silently never matches.
+ */
+export const WORKER_COOKIE = 'wl_worker'
